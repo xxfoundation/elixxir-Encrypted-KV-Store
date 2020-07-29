@@ -1,0 +1,8 @@
+*~
+# Ignore glide files/folders
+vendor/
+# Ignore Jetbrains IDE folder
+.idea/*
+# Ignore vim .swp buffers for open files
+.*.swp
+.*.swo
