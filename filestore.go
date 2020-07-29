@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	"github.com/pkg/errors"
 	"os"
 	"sync"
 )
@@ -50,7 +50,7 @@ func NewFilestore(basedir, password string) (*Filestore, error) {
 		}
 
 		if !bytes.Equal(ekvContents, expectedContents) {
-			return nil, fmt.Errorf("Bad decryption: %s != %s",
+			return nil, errors.Errorf("Bad decryption: %s != %s",
 				ekvContents, expectedContents)
 		}
 	}
