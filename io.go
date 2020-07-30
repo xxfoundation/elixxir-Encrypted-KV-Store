@@ -244,7 +244,7 @@ func write(path string, data []byte) error {
 	// modMonCntrSize + 4 bytes to represent data len, len of data,
 	// and 256 bit (32 byte) hash size
 	contents := make([]byte, 1+4+len(data)+32)
-	contents[0] = (modMonCntr + 1) % 3
+	contents[0] = modMonCntr
 
 	// Copy in the size
 	size := len(data)
