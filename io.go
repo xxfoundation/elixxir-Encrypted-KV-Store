@@ -184,21 +184,6 @@ func readContents(f *os.File) ([]byte, error) {
 	return contents, nil
 }
 
-// checkFileExists returns nil when the file exists and is not empty, and
-// false when it doesn't
-func checkFileExists(path string) error {
-	info, err := os.Stat(path)
-	// Return error if it exists and is a directory
-	if err == nil && info.IsDir() {
-		return errors.Errorf(errIsDir, path)
-	}
-	// Return error if it's empty
-	if info.Size() <= 0 {
-		return os.ErrNotExist
-	}
-	return err
-}
-
 // createFile creates the file, flushes the directory then returns an open,
 // writable file handle
 func createFile(path string) (*os.File, error) {
