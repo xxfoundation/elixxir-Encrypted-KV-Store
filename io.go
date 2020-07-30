@@ -149,7 +149,6 @@ func readContents(f *os.File) ([]byte, error) {
 		return nil, errors.Errorf(errShortRead, f.Name(),
 			cnt, len(sizeBytes))
 	}
-	fmt.Printf("Read size: %+v", sizeBytes)
 	size := int(binary.LittleEndian.Uint32(sizeBytes))
 	if size <= 0 {
 		errors.Errorf(errInvalidSizeContents, size)

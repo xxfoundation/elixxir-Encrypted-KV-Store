@@ -6,7 +6,6 @@
 package ekv
 
 import (
-	"fmt"
 	"os"
 	"testing"
 )
@@ -20,10 +19,7 @@ func (s *MarshalableString) Marshal() []byte {
 }
 
 func (s *MarshalableString) Unmarshal(d []byte) error {
-	fmt.Printf("Deserializing: %+v\n", d)
-	fmt.Printf("String conversion: %s\n", string(d))
 	s.S = string(d)
-	fmt.Printf("New Value: %s", s.S)
 	return nil
 }
 
