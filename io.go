@@ -149,7 +149,6 @@ func readContents(f *os.File) ([]byte, error) {
 		return nil, errors.Errorf(errShortRead, f.Name(),
 			cnt, len(sizeBytes))
 	}
-	fmt.Printf("Read size: %+v", sizeBytes)
 	size := int(binary.LittleEndian.Uint32(sizeBytes))
 	if size <= 0 {
 		errors.Errorf(errInvalidSizeContents, size)
@@ -183,21 +182,6 @@ func readContents(f *os.File) ([]byte, error) {
 	}
 
 	return contents, nil
-}
-
-// checkFileExists returns nil when the file exists and is not empty, and
-// false when it doesn't
-func checkFileExists(path string) error {
-	info, err := os.Stat(path)
-	// Return error if it exists and is a directory
-	if err == nil && info.IsDir() {
-		return errors.Errorf(errIsDir, path)
-	}
-	// Return error if it's empty
-	if info.Size() <= 0 {
-		return os.ErrNotExist
-	}
-	return err
 }
 
 // createFile creates the file, flushes the directory then returns an open,
@@ -260,7 +244,7 @@ func write(path string, data []byte) error {
 	// modMonCntrSize + 4 bytes to represent data len, len of data,
 	// and 256 bit (32 byte) hash size
 	contents := make([]byte, 1+4+len(data)+32)
-	contents[0] = (modMonCntr + 1) % 3
+	contents[0] = modMonCntr
 
 	// Copy in the size
 	size := len(data)

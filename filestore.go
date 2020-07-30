@@ -19,7 +19,7 @@ import (
 type Filestore struct {
 	basedir  string
 	password string
-	lock     sync.RWMutex
+	sync.RWMutex
 	keyLocks map[string]*sync.RWMutex
 }
 
@@ -78,43 +78,50 @@ func (f *Filestore) Set(key string, objectToStore Marshaler) error {
 // Get the value for the given key
 func (f *Filestore) Get(key string, loadIntoThisObject Unmarshaler) error {
 	decryptedContents, err := f.getData(key)
-	if err != nil {
-		return err
+	if err == nil {
+		err = loadIntoThisObject.Unmarshal(decryptedContents)
 	}
-	return loadIntoThisObject.Unmarshal(decryptedContents)
+	return err
 }
 
 // SetInterface uses json to encode and set data.
 func (f *Filestore) SetInterface(key string, objectToStore interface{}) error {
 	data, err := json.Marshal(objectToStore)
-	if err != nil {
-		return err
+	if err == nil {
+		err = f.setData(key, data)
 	}
-
-	return f.setData(key, data)
+	return err
 }
 
 // GetInterface uses json to encode and get data
 func (f *Filestore) GetInterface(key string, v interface{}) error {
 	data, err := f.getData(key)
-	if err != nil {
-		return err
+	if err == nil {
+		err = json.Unmarshal(data, v)
 	}
-	return json.Unmarshal(data, v)
+	return err
 }
 
 // Internal helper functions
 
 func (f *Filestore) getLock(encryptedKey string) *sync.RWMutex {
-	f.lock.RLock()
+	f.RLock()
 	lck, ok := f.keyLocks[encryptedKey]
-	f.lock.RUnlock()
-	if !ok {
-		f.lock.Lock()
-		lck = &sync.RWMutex{}
-		f.keyLocks[encryptedKey] = lck
-		f.lock.Unlock()
+	f.RUnlock()
+	if ok {
+		return lck
 	}
+	// Note that 2 threads can get to this line at the same time,
+	// which is why we check again after taking the write lock
+	f.Lock()
+	defer f.Unlock()
+
+	lck, ok = f.keyLocks[encryptedKey]
+	if ok {
+		return lck
+	}
+	lck = &sync.RWMutex{}
+	f.keyLocks[encryptedKey] = lck
 	return lck
 }
 
@@ -132,10 +139,11 @@ func (f *Filestore) getData(key string) ([]byte, error) {
 	encryptedContents, err := read(encryptedKey)
 	lck.RUnlock()
 
-	if err != nil {
-		return nil, err
+	var decryptedContents []byte
+	if err == nil {
+		decryptedContents, err = decrypt(encryptedContents, f.password)
 	}
-	return decrypt(encryptedContents, f.password)
+	return decryptedContents, err
 }
 
 func (f *Filestore) setData(key string, data []byte) error {
