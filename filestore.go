@@ -36,7 +36,7 @@ func NewFilestore(basedir, password string) (*Filestore, error) {
 
 	// Get the path to the ".ekv" file
 	ekvPath := basedir + string(os.PathSeparator) + ".ekv"
-	expectedContents := []byte(ekvPath)
+	expectedContents := []byte(ekvPath + ",version:0")
 
 	// Try to read the .ekv.1/2 file, if it exists then we check
 	// it's contents
