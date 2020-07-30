@@ -126,7 +126,7 @@ func (f *Filestore) getLock(encryptedKey string) *sync.RWMutex {
 }
 
 func (f *Filestore) getKey(key string) string {
-	encryptedKey := encryptHashNonce([]byte(key), f.password)
+	encryptedKey := hashStringWithPassword(key, f.password)
 	encryptedKeyStr := hex.EncodeToString(encryptedKey)
 	return f.basedir + string(os.PathSeparator) + encryptedKeyStr
 }
