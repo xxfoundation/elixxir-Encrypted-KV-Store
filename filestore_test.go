@@ -230,8 +230,7 @@ func TestFilestore_Reopen(t *testing.T) {
 	}
 }
 
-// TestFilestore_Reopen verifies we can recreate/reopen the store and get the
-// data we stored back out.
+// TestFilestore_BadPass confirms using a bad password nets an error
 func TestFilestore_BadPass(t *testing.T) {
 	err := os.RemoveAll(".ekv_testdir_badpass")
 	if err != nil {
