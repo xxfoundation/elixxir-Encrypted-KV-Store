@@ -19,7 +19,7 @@ import (
 type Filestore struct {
 	basedir  string
 	password string
-	lock     sync.RWMutex
+	sync.RWMutex
 	keyLocks map[string]*sync.RWMutex
 }
 
@@ -106,15 +106,23 @@ func (f *Filestore) GetInterface(key string, v interface{}) error {
 // Internal helper functions
 
 func (f *Filestore) getLock(encryptedKey string) *sync.RWMutex {
-	f.lock.RLock()
+	f.RLock()
 	lck, ok := f.keyLocks[encryptedKey]
-	f.lock.RUnlock()
-	if !ok {
-		f.lock.Lock()
-		lck = &sync.RWMutex{}
-		f.keyLocks[encryptedKey] = lck
-		f.lock.Unlock()
+	f.RUnlock()
+	if ok {
+		return lck
 	}
+	// Note that 2 threads can get to this line at the same time,
+	// which is why we check again after taking the write lock
+	f.Lock()
+	defer f.Unlock()
+
+	lck, ok = f.keyLocks[encryptedKey]
+	if ok {
+		return lck
+	}
+	lck = &sync.RWMutex{}
+	f.keyLocks[encryptedKey] = lck
 	return lck
 }
 
