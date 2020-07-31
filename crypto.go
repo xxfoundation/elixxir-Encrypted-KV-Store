@@ -7,7 +7,6 @@ package ekv
 
 import (
 	"crypto/cipher"
-	"crypto/rand"
 	"fmt"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/blake2b"
@@ -34,10 +33,10 @@ func initChaCha20Poly1305(password string) cipher.AEAD {
 	return chaCipher
 }
 
-func encrypt(data []byte, password string) []byte {
+func encrypt(data []byte, password string, csprng io.Reader) []byte {
 	chaCipher := initChaCha20Poly1305(password)
 	nonce := make([]byte, chaCipher.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+	if _, err := io.ReadFull(csprng, nonce); err != nil {
 		panic(fmt.Sprintf("Could not generate nonce: %s", err.Error()))
 	}
 	ciphertext := chaCipher.Seal(nonce, nonce, data, nil)

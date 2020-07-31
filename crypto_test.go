@@ -5,13 +5,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 package ekv
 
-import "testing"
+import (
+	"crypto/rand"
+	"testing"
+)
 
 // TestCrypto smoke tests the crypto helper functions
 func TestCrypto(t *testing.T) {
 	plaintext := []byte("Hello, World!")
 	password := "test_password"
-	ciphertext := encrypt(plaintext, password)
+	ciphertext := encrypt(plaintext, password, rand.Reader)
 	decrypted, err := decrypt(ciphertext, password)
 	if err != nil {
 		t.Errorf("%+v", err)
