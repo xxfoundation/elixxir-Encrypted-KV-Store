@@ -7,9 +7,11 @@ package ekv
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"github.com/pkg/errors"
+	"io"
 	"os"
 	"sync"
 )
@@ -21,6 +23,7 @@ type Filestore struct {
 	password string
 	sync.RWMutex
 	keyLocks map[string]*sync.RWMutex
+	csprng   io.Reader
 }
 
 // NewFilestore returns an initialized filestore object or an error
@@ -28,6 +31,13 @@ type Filestore struct {
 // this file is not used other than to verify read/write capabilities on the
 // directory.
 func NewFilestore(basedir, password string) (*Filestore, error) {
+	return NewFilestoreWithNonceGenerator(basedir, password, rand.Reader)
+}
+
+// NewFilestoreWithNonceGenerator returns an initialized filestore object that
+// uses a custom RNG for Nonce generation.
+func NewFilestoreWithNonceGenerator(basedir, password string,
+	csprng io.Reader) (*Filestore, error) {
 	// Create the directory if it doesn't exist, otherwise do nothing.
 	err := os.MkdirAll(basedir, 0700)
 	if err != nil {
@@ -36,7 +46,7 @@ func NewFilestore(basedir, password string) (*Filestore, error) {
 
 	// Get the path to the ".ekv" file
 	ekvPath := basedir + string(os.PathSeparator) + ".ekv"
-	expectedContents := []byte(ekvPath)
+	expectedContents := []byte(ekvPath + ",version:0")
 
 	// Try to read the .ekv.1/2 file, if it exists then we check
 	// it's contents
@@ -57,7 +67,7 @@ func NewFilestore(basedir, password string) (*Filestore, error) {
 
 	// Now try to write the .ekv file which also reads and verifies what
 	// we write
-	err = write(ekvPath, encrypt(expectedContents, password))
+	err = write(ekvPath, encrypt(expectedContents, password, csprng))
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +76,24 @@ func NewFilestore(basedir, password string) (*Filestore, error) {
 		basedir:  basedir,
 		password: password,
 		keyLocks: make(map[string]*sync.RWMutex),
+		csprng:   csprng,
 	}
 	return fs, nil
+}
+
+// SetNonceGenerator sets the cryptographically secure pseudo-random
+// number generator (csprng) used during encryption to generate nonces.
+func (f *Filestore) SetNonceGenerator(csprng io.Reader) {
+	f.csprng = csprng
+}
+
+// Close is equivalent to nil'ing out the Filestore object. This function
+// is in place for the future when we add secure memory storage for keys.
+func (f *Filestore) Close() {
+	f.password = ""
+	f.basedir = ""
+	f.keyLocks = nil
+	f.csprng = nil
 }
 
 // Set the value for the given key
@@ -126,7 +152,7 @@ func (f *Filestore) getLock(encryptedKey string) *sync.RWMutex {
 }
 
 func (f *Filestore) getKey(key string) string {
-	encryptedKey := encryptHashNonce([]byte(key), f.password)
+	encryptedKey := hashStringWithPassword(key, f.password)
 	encryptedKeyStr := hex.EncodeToString(encryptedKey)
 	return f.basedir + string(os.PathSeparator) + encryptedKeyStr
 }
@@ -148,7 +174,7 @@ func (f *Filestore) getData(key string) ([]byte, error) {
 
 func (f *Filestore) setData(key string, data []byte) error {
 	encryptedKey := f.getKey(key)
-	encryptedContents := encrypt(data, f.password)
+	encryptedContents := encrypt(data, f.password, f.csprng)
 
 	lck := f.getLock(encryptedKey)
 	lck.Lock()

@@ -6,59 +6,48 @@
 package ekv
 
 import (
-	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
-	"crypto/sha256"
 	"fmt"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/blake2b"
+	"golang.org/x/crypto/chacha20poly1305"
 	"io"
 )
 
-func hashPassword(password string) []byte {
-	hasher := sha256.New()
-	hasher.Write([]byte(password))
-	return hasher.Sum(nil)
+// Used for keyed hashes for, e.g., the "key" in the KV store
+func hashStringWithPassword(data, password string) []byte {
+	dHash := blake2b.Sum256([]byte(data))
+	pHash := blake2b.Sum256([]byte(password))
+	s := append(pHash[:], dHash[:]...)
+	h := blake2b.Sum256(s)
+	return h[:]
 }
 
-func initAESGCM(password string) cipher.AEAD {
-	aesCipher, _ := aes.NewCipher(hashPassword(password))
-	// NOTE: We use gcm as it's authenticated and simplest to set up
-	aesGCM, err := cipher.NewGCM(aesCipher)
+func initChaCha20Poly1305(password string) cipher.AEAD {
+	pwHash := blake2b.Sum256([]byte(password))
+	chaCipher, err := chacha20poly1305.NewX(pwHash[:])
 	if err != nil {
-		panic(fmt.Sprintf("Could not init AES GCM mode: %s",
+		panic(fmt.Sprintf("Could not init XChaCha20Poly1305 mode: %s",
 			err.Error()))
 	}
-	return aesGCM
+	return chaCipher
 }
 
-func encrypt(data []byte, password string) []byte {
-	aesGCM := initAESGCM(password)
-	nonce := make([]byte, aesGCM.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+func encrypt(data []byte, password string, csprng io.Reader) []byte {
+	chaCipher := initChaCha20Poly1305(password)
+	nonce := make([]byte, chaCipher.NonceSize())
+	if _, err := io.ReadFull(csprng, nonce); err != nil {
 		panic(fmt.Sprintf("Could not generate nonce: %s", err.Error()))
 	}
-	ciphertext := aesGCM.Seal(nonce, nonce, data, nil)
-	return ciphertext
-}
-
-// Use the prefix hash of the data as the nonce, so you can always generate
-// the same encryption for the data (this is used to generate keys)
-func encryptHashNonce(data []byte, password string) []byte {
-	aesGCM := initAESGCM(password)
-	h, _ := blake2b.New256(nil)
-	h.Write(data)
-	nonce := h.Sum(nil)[:aesGCM.NonceSize()]
-	ciphertext := aesGCM.Seal(nonce, nonce, data, nil)
+	ciphertext := chaCipher.Seal(nonce, nonce, data, nil)
 	return ciphertext
 }
 
 func decrypt(data []byte, password string) ([]byte, error) {
-	aesGCM := initAESGCM(password)
-	nonceLen := aesGCM.NonceSize()
+	chaCipher := initChaCha20Poly1305(password)
+	nonceLen := chaCipher.NonceSize()
 	nonce, ciphertext := data[:nonceLen], data[nonceLen:]
-	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
+	plaintext, err := chaCipher.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "Cannot decrypt with password!")
 	}

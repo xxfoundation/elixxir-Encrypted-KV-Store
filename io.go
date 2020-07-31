@@ -80,9 +80,10 @@ func compareModMonCntr(t1, t2 byte) byte {
 
 // getFileOrder returns the newest and oldest files using the modular monotic
 // counter inside them. If either fails to read, the successful file is returned
-// if both fail to read, or return invalide results, return an error.
+// if both fail to read, or return invalid results, return an error.
 func getFileOrder(path1, path2 string) (*os.File, *os.File, error) {
-	// default to invalid values
+	// default to invalid values. The only valid modulo monotonic counter
+	// values are 0, 1, and 2.
 	t1 := byte(3)
 	t2 := byte(3)
 
