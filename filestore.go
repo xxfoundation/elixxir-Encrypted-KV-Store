@@ -113,6 +113,9 @@ func (f *Filestore) Get(key string, loadIntoThisObject Unmarshaler) error {
 // Get the value for the given key
 func (f *Filestore) Delete(key string) error {
 	encryptedKey := f.getKey(key)
+	lck := f.getLock(encryptedKey)
+	lck.Lock()
+	defer lck.Unlock()
 	return deleteFiles(encryptedKey)
 }
 
