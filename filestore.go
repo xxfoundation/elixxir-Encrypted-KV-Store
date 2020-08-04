@@ -110,6 +110,15 @@ func (f *Filestore) Get(key string, loadIntoThisObject Unmarshaler) error {
 	return err
 }
 
+// Delete the value for the given key
+func (f *Filestore) Delete(key string) error {
+	encryptedKey := f.getKey(key)
+	lck := f.getLock(encryptedKey)
+	lck.Lock()
+	defer lck.Unlock()
+	return deleteFiles(encryptedKey, f.csprng)
+}
+
 // SetInterface uses json to encode and set data.
 func (f *Filestore) SetInterface(key string, objectToStore interface{}) error {
 	data, err := json.Marshal(objectToStore)

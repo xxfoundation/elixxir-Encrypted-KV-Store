@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/blake2b"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -203,6 +204,60 @@ func createFile(path string) (*os.File, error) {
 	d.Close()
 
 	return os.Create(path)
+}
+
+// deleteFile overwrites a files contents with random data and then deletes
+// the file
+func deleteFile(path string, csprng io.Reader) error {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	// If the file exists, attempt to delete
+	if err != nil {
+		return err
+	}
+
+	buf := make([]byte, info.Size())
+	if _, err = io.ReadFull(csprng, buf); err != nil {
+		return err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(buf)
+	if err != nil {
+		return err
+	}
+	f.Close()
+	f.Sync()
+	err = os.Remove(path)
+	return err
+}
+
+// deleteFiles deletes both files and then flushes the directory
+func deleteFiles(path string, csprng io.Reader) error {
+	// Create file if is it is a "does not exist error"
+	var fns [2]string
+	fns[0], fns[1] = getPaths(path)
+
+	// Delete both paths if they exist
+	for i := 0; i < 2; i++ {
+		err := deleteFile(fns[i], csprng)
+		// Return errors from removal OR stat check
+		if err != nil {
+			return err
+		}
+	}
+
+	// Open directory and flush it
+	dirname := filepath.Dir(path)
+	d, err := os.Open(dirname)
+	d.Sync()
+	d.Close()
+
+	return err
 }
 
 // write to the file and verify the data can be read

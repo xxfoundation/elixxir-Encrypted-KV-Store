@@ -30,6 +30,12 @@ func (m Memstore) Get(key string, loadIntoThisObject Unmarshaler) error {
 	return loadIntoThisObject.Unmarshal(data)
 }
 
+// Get returns the value
+func (m Memstore) Delete(key string) error {
+	delete(m, key)
+	return nil
+}
+
 // SetInterface sets the value using a json encoder
 func (m Memstore) SetInterface(key string, objectToStore interface{}) error {
 	data, err := json.Marshal(objectToStore)
