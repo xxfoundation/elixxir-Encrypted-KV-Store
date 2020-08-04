@@ -81,6 +81,11 @@ func TestFilestore_Smoke(t *testing.T) {
 	if s.S != "Hi" {
 		t.Errorf("Did not get what we wrote: %s != %s", s.S, "Hi")
 	}
+
+	err = f.Delete("Test456")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 }
 
 // TestFilestore_Broken tries to marshal with a broken object

@@ -205,6 +205,37 @@ func createFile(path string) (*os.File, error) {
 	return os.Create(path)
 }
 
+// deleteFiles deletes both files and then flushes the directory
+func deleteFiles(path string) error {
+	// Create file if is it is a "does not exist error"
+	var fns [2]string
+	fns[0], fns[1] = getPaths(path)
+
+	// Delete both paths if they exist
+	for i := 0; i < 2; i++ {
+		_, err := os.Stat(fns[i])
+		// If the file exists, attempt to delete
+		if !os.IsNotExist(err) {
+			err = os.Remove(fns[i])
+		} else {
+			// Doesn't exist, so skip error check
+			continue
+		}
+		// Return errors from removal OR stat check
+		if err != nil {
+			return err
+		}
+	}
+
+	// Open directory and flush it
+	dirname := filepath.Dir(path)
+	d, err := os.Open(dirname)
+	d.Sync()
+	d.Close()
+
+	return err
+}
+
 // write to the file and verify the data can be read
 func write(path string, data []byte) error {
 	// First, check if either file can be read. Then write to the other one

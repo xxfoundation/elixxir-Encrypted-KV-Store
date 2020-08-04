@@ -26,6 +26,7 @@ type Unmarshaler interface {
 type KeyValue interface {
 	Set(key string, objectToStore Marshaler) error
 	Get(key string, loadIntoThisObject Unmarshaler) error
+	Delete(key string) error
 	SetInterface(key string, objectToSTore interface{}) error
 	GetInterface(key string, v interface{}) error
 }
