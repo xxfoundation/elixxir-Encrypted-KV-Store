@@ -5,6 +5,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 package ekv
 
+import (
+	"os"
+	"strings"
+)
+
 // Marshaler interface defines objects which can "Marshal" themselves into a
 // byte slice. This should produce a byte slice that can be used to fully
 // reconstruct the object later.
@@ -29,4 +34,14 @@ type KeyValue interface {
 	Delete(key string) error
 	SetInterface(key string, objectToSTore interface{}) error
 	GetInterface(key string, v interface{}) error
+}
+
+// Exists determines if the error message is known to report the key does not
+// exist. Returns true if the error does not specify or it is nil and false
+// otherwise.
+func Exists(err error) bool {
+	if err == nil {
+		return true
+	}
+	return !(os.IsNotExist(err) || strings.Contains(err.Error(), objectNotFoundErr))
 }
