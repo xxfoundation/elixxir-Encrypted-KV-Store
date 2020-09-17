@@ -11,6 +11,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	objectNotFoundErr = "object not found"
+	setInterfaceErr   = "SetInterface error"
+)
+
 // Memstore is an unencrypted memory based map that implements the KV interface
 type Memstore map[string][]byte
 
@@ -25,7 +30,7 @@ func (m Memstore) Set(key string, objectToStore Marshaler) error {
 func (m Memstore) Get(key string, loadIntoThisObject Unmarshaler) error {
 	data, ok := m[key]
 	if !ok {
-		return errors.New("object not found")
+		return errors.New(objectNotFoundErr)
 	}
 	return loadIntoThisObject.Unmarshal(data)
 }
@@ -40,7 +45,7 @@ func (m Memstore) Delete(key string) error {
 func (m Memstore) SetInterface(key string, objectToStore interface{}) error {
 	data, err := json.Marshal(objectToStore)
 	if err != nil {
-		return errors.Wrap(err, "SetInterface error")
+		return errors.Wrap(err, setInterfaceErr)
 	}
 	m[key] = data
 	return nil
@@ -50,7 +55,7 @@ func (m Memstore) SetInterface(key string, objectToStore interface{}) error {
 func (m Memstore) GetInterface(key string, objectToLoad interface{}) error {
 	data, ok := m[key]
 	if !ok {
-		return errors.New("object not found")
+		return errors.New(objectNotFoundErr)
 	}
 	return json.Unmarshal(data, objectToLoad)
 }
