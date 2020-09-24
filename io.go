@@ -192,7 +192,7 @@ func createFile(path string) (*os.File, error) {
 	// Create file if is it is a "does not exist error"
 	f, err := os.Create(path)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	f.Sync()
 	f.Close()

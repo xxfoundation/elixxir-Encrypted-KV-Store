@@ -41,7 +41,7 @@ func NewFilestoreWithNonceGenerator(basedir, password string,
 	// Create the directory if it doesn't exist, otherwise do nothing.
 	err := os.MkdirAll(basedir, 0700)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	// Get the path to the ".ekv" file
@@ -52,11 +52,11 @@ func NewFilestoreWithNonceGenerator(basedir, password string,
 	// it's contents
 	ekvCiphertext, err := read(ekvPath)
 	if !os.IsNotExist(err) && err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	} else if ekvCiphertext != nil {
 		ekvContents, err := decrypt(ekvCiphertext, password)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 
 		if !bytes.Equal(ekvContents, expectedContents) {
@@ -69,7 +69,7 @@ func NewFilestoreWithNonceGenerator(basedir, password string,
 	// we write
 	err = write(ekvPath, encrypt(expectedContents, password, csprng))
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	fs := &Filestore{
@@ -107,7 +107,7 @@ func (f *Filestore) Get(key string, loadIntoThisObject Unmarshaler) error {
 	if err == nil {
 		err = loadIntoThisObject.Unmarshal(decryptedContents)
 	}
-	return err
+	return errors.WithStack(err)
 }
 
 // Delete the value for the given key
@@ -125,7 +125,7 @@ func (f *Filestore) SetInterface(key string, objectToStore interface{}) error {
 	if err == nil {
 		err = f.setData(key, data)
 	}
-	return err
+	return errors.WithStack(err)
 }
 
 // GetInterface uses json to encode and get data
@@ -134,7 +134,7 @@ func (f *Filestore) GetInterface(key string, v interface{}) error {
 	if err == nil {
 		err = json.Unmarshal(data, v)
 	}
-	return err
+	return errors.WithStack(err)
 }
 
 // Internal helper functions
@@ -178,7 +178,7 @@ func (f *Filestore) getData(key string) ([]byte, error) {
 	if err == nil {
 		decryptedContents, err = decrypt(encryptedContents, f.password)
 	}
-	return decryptedContents, err
+	return decryptedContents, errors.WithStack(err)
 }
 
 func (f *Filestore) setData(key string, data []byte) error {
@@ -189,5 +189,9 @@ func (f *Filestore) setData(key string, data []byte) error {
 	lck.Lock()
 	defer lck.Unlock()
 
-	return write(encryptedKey, encryptedContents)
+	err := write(encryptedKey, encryptedContents)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }

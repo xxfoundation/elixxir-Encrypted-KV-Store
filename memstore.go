@@ -57,5 +57,9 @@ func (m Memstore) GetInterface(key string, objectToLoad interface{}) error {
 	if !ok {
 		return errors.New(objectNotFoundErr)
 	}
-	return json.Unmarshal(data, objectToLoad)
+	err := json.Unmarshal(data, objectToLoad)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
