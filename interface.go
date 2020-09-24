@@ -6,6 +6,7 @@
 package ekv
 
 import (
+	"github.com/pkg/errors"
 	"os"
 	"strings"
 )
@@ -43,5 +44,7 @@ func Exists(err error) bool {
 	if err == nil {
 		return true
 	}
-	return !(os.IsNotExist(err) || strings.Contains(err.Error(), objectNotFoundErr))
+
+	return !(errors.Is(err, os.ErrNotExist) ||
+		strings.Contains(err.Error(), objectNotFoundErr))
 }
