@@ -10,6 +10,21 @@ mobile and desktop applications where one may want to transfer
 protected files to a new device while protecting the nature of the
 information of what is stored in addition to the contents.
 
+Features:
+1. Both the key and the contents behind the key are protected on disk.
+2. A best-effort approach is used to store and flush changes to disk.
+3. Thread-safety within the same EKV instance.
+
+EKV is not a secured memory enclave. Data is protected when stored to
+disk, not RAM. Please see
+[Memguard](https://github.com/awnumar/memguard) and similar projects
+if that is what you need.
+
+EKV requires a cryptographically secure random number generator. We
+recommend Elixxir's fastRNG.
+
+EKV is released under the simplified BSD License.
+
 ## Known Limitations and Roadmap
 
 EKV has several known limitations at this time:
@@ -72,11 +87,13 @@ To load and store to the EKV with this type:
 ```
 import (
 	...
+	"crypto/rand"
 	"gitlab.com/elixxir/ekv"
 )
 
 func main() {
-	kvstore, err := ekv.NewFilestore("somedirectory" ,"Some Password")
+	kvstore, err := ekv.NewFilestoreWithNonceGenerator("somedirectory",
+		"Some Password", rand.Reader)
 	if err != nil {
 		// Print/handle could not create or open error ...
 	}
