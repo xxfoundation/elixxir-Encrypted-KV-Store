@@ -48,7 +48,7 @@ func NewFilestoreWithNonceGenerator(basedir, password string,
 
 	// Get the path to the ".ekv" file
 	ekvPath := basedir + string(os.PathSeparator) + ".ekv"
-	expectedContents := []byte(ekvPath + ",version:0")
+	expectedContents := []byte("version:1")
 
 	// Try to read the .ekv.1/2 file, if it exists then we check
 	// it's contents
