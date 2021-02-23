@@ -47,10 +47,10 @@ func NewFilestoreWithNonceGenerator(basedir, password string,
 	}
 
 	// Get the path to the "ekv" file
-	ekvPath := basedir + string(os.PathSeparator) + "ekv"
+	ekvPath := basedir + string(os.PathSeparator) + ".ekv"
 	expectedContents := []byte("version:1")
 
-	// Try to read the ekv.1/2 file, if it exists then we check
+	// Try to read the .ekv.1/2 file, if it exists then we check
 	// it's contents
 	ekvCiphertext, err := read(ekvPath)
 	if !os.IsNotExist(err) && err != nil {
@@ -67,7 +67,7 @@ func NewFilestoreWithNonceGenerator(basedir, password string,
 		}
 	}
 
-	// Now try to write the ekv file which also reads and verifies what
+	// Now try to write the .ekv file which also reads and verifies what
 	// we write
 	err = write(ekvPath, encrypt(expectedContents, password, csprng))
 	if err != nil {
