@@ -349,8 +349,6 @@ func TestFilestore_FDCount(t *testing.T) {
 					s.S, expStr)
 			}
 			sharedCh <- true
-			time.Sleep(100 * time.Millisecond)
-			f.Delete(keyStrInt)
 		}(f, x)
 	}
 	finishedCnt := 0
