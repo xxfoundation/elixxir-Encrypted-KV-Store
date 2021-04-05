@@ -267,6 +267,12 @@ func write(path string, data []byte) error {
 	// First, check if either file can be read. Then write to the other one
 	path1, path2 := getPaths(path)
 	newest, oldest, err := getFileOrder(path1, path2)
+	if newest != nil {
+		defer newest.Close()
+	}
+	if oldest != nil {
+		defer oldest.Close()
+	}
 
 	filesToRead := []*os.File{newest, oldest}
 	modMonCntr := byte(2) // (2+1)%3 defaults to 0 when we can't read it
@@ -279,7 +285,6 @@ func write(path string, data []byte) error {
 		buf[0] = 3
 		cnt, _ := filesToRead[i].ReadAt(buf, 0)
 		_, err := readContents(filesToRead[i])
-		filesToRead[i].Close()
 
 		if cnt == 1 && err == nil {
 			modMonCntr = buf[0]
@@ -330,9 +335,11 @@ func write(path string, data []byte) error {
 
 	n, err := fileToWrite.Write(contents)
 	if err != nil {
+		fileToWrite.Close()
 		return err
 	}
 	if n != len(contents) {
+		fileToWrite.Close()
 		return errors.Errorf(errShortWrite, filePathToWrite,
 			n, len(contents))
 	}
@@ -366,6 +373,12 @@ func read(path string) ([]byte, error) {
 	// the first byte of both files cannot be read)
 	path1, path2 := getPaths(path)
 	newest, oldest, err := getFileOrder(path1, path2)
+	if newest != nil {
+		defer newest.Close()
+	}
+	if oldest != nil {
+		defer oldest.Close()
+	}
 
 	// Return the first file we can read the contents and validate a
 	// checksum, or an error
@@ -375,7 +388,6 @@ func read(path string) ([]byte, error) {
 			continue
 		}
 		contents, err := readContents(filesToRead[i])
-		filesToRead[i].Close()
 		if err == nil {
 			return contents, err
 		}
