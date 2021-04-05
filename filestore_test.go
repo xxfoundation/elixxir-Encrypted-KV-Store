@@ -10,8 +10,12 @@ package ekv
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	"io/ioutil"
 	"os"
+	"runtime"
+	"runtime/debug"
 	"testing"
+	"time"
 )
 
 // This is a simple marshalable object
@@ -253,5 +257,128 @@ func TestFilestore_BadPass(t *testing.T) {
 	if err == nil {
 		t.Errorf("Opened with bad password!")
 	}
+
+}
+
+// TestFilestore_FDCount writes to random keys and measures that the
+// number of open file descriptors is limited.
+func TestFilestore_FDCount(t *testing.T) {
+	// Check if we have a linux /proc/self/fd file.
+	fdpath := "/proc/self/fd"
+	fdStat, err := os.Stat(fdpath)
+	if os.IsNotExist(err) || !fdStat.IsDir() {
+		t.Logf("Could not find /proc/self/fd, cannot run this test")
+		return
+	}
+
+	baseDir := ".ekv_testdir_fdcount"
+
+	getFDCount := func() int {
+		files, err := ioutil.ReadDir("/proc/self/fd")
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+		return len(files)
+	}
+
+	startFDCount := getFDCount()
+
+	t.Logf("Starting File Descriptor Count: %d", startFDCount)
+
+	err = os.RemoveAll(baseDir)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	f, err := NewFilestore(baseDir, "Hello, World!")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
+
+	curFDCount := getFDCount()
+	t.Logf("Pre-test Count: %d", curFDCount)
+	startRoutinesCount := runtime.NumGoroutine()
+
+	debug.SetGCPercent(-1)
+
+	totalCnt := 200
+	sharedCh := make(chan bool, totalCnt*2)
+	for x := 0; x < totalCnt; x++ {
+		// Kick off a read/write to a unique key
+		go func(f *Filestore, x int) {
+			expStr := fmt.Sprintf("Hi, %d!", x)
+			keyStr := fmt.Sprintf("UniqueKey%d", x)
+			i := &MarshalableString{
+				S: expStr,
+			}
+			err := f.Set(keyStr, i)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+			s := &MarshalableString{}
+			err = f.Get(keyStr, s)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+			if s.S != expStr {
+				t.Errorf("Did not get what we wrote: %s != %s",
+					s.S, expStr)
+			}
+			sharedCh <- true
+			time.Sleep(100 * time.Millisecond)
+			f.Delete(keyStr)
+		}(f, x)
+		// Kick off a read/write to the same key
+		go func(f *Filestore, x int) {
+			expStr := fmt.Sprintf("Hi!")
+			i := &MarshalableString{
+				S: expStr,
+			}
+			keyStrInt := "SameKey"
+			err := f.SetInterface(keyStrInt, i)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+			s := &MarshalableString{}
+			err = f.GetInterface(keyStrInt, s)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+			if s.S != expStr {
+				t.Errorf("Did not get what we wrote: %s != %s",
+					s.S, expStr)
+			}
+			sharedCh <- true
+			time.Sleep(100 * time.Millisecond)
+			f.Delete(keyStrInt)
+		}(f, x)
+	}
+	finishedCnt := 0
+	for finishedCnt < totalCnt*2 {
+		select {
+		case <-sharedCh:
+			finishedCnt++
+			curFDCount = getFDCount()
+		case <-time.After(100 * time.Millisecond):
+			curFDCount = getFDCount()
+
+		}
+		numRoutines := runtime.NumGoroutine() - startRoutinesCount
+		t.Logf("Count at %d: %d (numProcs: %d)", finishedCnt,
+			curFDCount, numRoutines)
+		// Note: This number is slightly fudged.. it is based on
+		// 2 files at most open per thread in the unique threads
+		// and only a few threads getting past the lock on the
+		// shared key threads, in practice it doesn't go above
+		// ~175 or so in the corrected code when totalCnt is 200
+		// whereas it always reached 400 before.
+		if (curFDCount - startFDCount) > numRoutines/2 {
+			t.Errorf("Used FD Count exceeds limit: "+
+				"%d > %d", curFDCount-startFDCount,
+				numRoutines/2)
+		}
+	}
+
+	debug.SetGCPercent(100)
 
 }
