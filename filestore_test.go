@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"io/ioutil"
+	"math"
 	"os"
 	"runtime"
 	"runtime/debug"
@@ -370,7 +371,8 @@ func TestFilestore_FDCount(t *testing.T) {
 		// shared key threads, in practice it doesn't go above
 		// ~175 or so in the corrected code when totalCnt is 200
 		// whereas it always reached 400 before.
-		if (curFDCount - startFDCount) > numRoutines/2 {
+		limit := math.Max(float64(numRoutines/2), 10)
+		if (curFDCount - startFDCount) > int(limit) {
 			t.Errorf("Used FD Count exceeds limit: "+
 				"%d > %d", curFDCount-startFDCount,
 				numRoutines/2)
