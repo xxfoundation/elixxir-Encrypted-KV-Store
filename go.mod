@@ -1,4 +1,4 @@
-module gitlab.com/elixxir/ekv
+module git.xx.network/elixxir/ekv
 
 go 1.13
 
