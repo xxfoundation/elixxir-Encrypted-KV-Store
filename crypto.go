@@ -48,6 +48,11 @@ func encrypt(data []byte, password string, csprng io.Reader) []byte {
 func decrypt(data []byte, password string) ([]byte, error) {
 	chaCipher := initChaCha20Poly1305(password)
 	nonceLen := chaCipher.NonceSize()
+	if (len(data) - nonceLen) <= 0 {
+		errMsg := fmt.Sprintf("Read %d bytes, too short to decrypt",
+			len(data))
+		return nil, errors.New(errMsg)
+	}
 	nonce, ciphertext := data[:nonceLen], data[nonceLen:]
 	plaintext, err := chaCipher.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
