@@ -388,8 +388,11 @@ func read(path string) ([]byte, error) {
 			continue
 		}
 		contents, err := readContents(filesToRead[i])
-		if err == nil {
-			return contents, err
+		if err != nil {
+			continue
+		}
+		if len(contents) != 0 {
+			return contents, nil
 		}
 	}
 
