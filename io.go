@@ -264,6 +264,9 @@ func deleteFiles(path string, csprng io.Reader) error {
 
 // write to the file and verify the data can be read
 func write(path string, data []byte) error {
+	if len(data) == 0 {
+		return errors.New(fmt.Sprintf(errInvalidSizeContents, 0))
+	}
 	// First, check if either file can be read. Then write to the other one
 	path1, path2 := getPaths(path)
 	newest, oldest, err := getFileOrder(path1, path2)
@@ -388,8 +391,11 @@ func read(path string) ([]byte, error) {
 			continue
 		}
 		contents, err := readContents(filesToRead[i])
-		if err == nil {
-			return contents, err
+		if err != nil {
+			continue
+		}
+		if len(contents) != 0 {
+			return contents, nil
 		}
 	}
 

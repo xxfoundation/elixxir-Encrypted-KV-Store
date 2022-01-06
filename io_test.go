@@ -8,6 +8,7 @@
 package ekv
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -41,5 +42,18 @@ func TestModMonCntr(t *testing.T) {
 	// Invalid comparison
 	if compareModMonCntr(3, 2) != 0 {
 		t.Errorf("Should be invalid!")
+	}
+}
+
+func TestZeroWrite(t *testing.T) {
+	key := "test"
+	data := []byte{}
+	err := write(key, data)
+	if err == nil {
+		t.Errorf("Expected error on 0 write")
+	}
+	expectedErr := fmt.Sprintf(errInvalidSizeContents, 0)
+	if err.Error() != expectedErr {
+		t.Errorf("Unexpected error: %+v", err)
 	}
 }
