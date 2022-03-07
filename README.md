@@ -1,7 +1,7 @@
 # Encrypted KV Store
 
-[![pipeline status](https://gitlab.com/elixxir/ekv/badges/master/pipeline.svg)](https://gitlab.com/elixxir/ekv/commits/master)
-[![coverage report](https://gitlab.com/elixxir/ekv/badges/master/coverage.svg)](https://gitlab.com/elixxir/ekv/commits/master)
+[![pipeline status](https://git.xx.network/elixxir/ekv/badges/master/pipeline.svg)](https://git.xx.network/elixxir/ekv/commits/master)
+[![coverage report](https://git.xx.network/elixxir/ekv/badges/master/coverage.svg)](https://git.xx.network/elixxir/ekv/commits/master)
 
 
 EKV is a directory and file-based encrypted key value storage library
