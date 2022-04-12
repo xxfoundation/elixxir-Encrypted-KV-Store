@@ -14,7 +14,7 @@ import (
 
 // Tests happy path of Exists() with Memstore.
 func TestExists_Memstore(t *testing.T) {
-	f := make(Memstore)
+	f := MakeMemstore()
 	i := &MarshalableString{S: "Hi"}
 	err := f.Set("key2", i)
 	if err != nil {

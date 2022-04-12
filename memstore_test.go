@@ -12,9 +12,9 @@ import (
 	"testing"
 )
 
-// TestFilestore_Smoke runs a basic read/write on the current directory
+// TestMemstore_Smoke runs a basic read/write on the current directory.
 func TestMemstore_Smoke(t *testing.T) {
-	f := make(Memstore)
+	f := MakeMemstore()
 	i := &MarshalableString{
 		S: "Hi",
 	}
@@ -46,9 +46,9 @@ func TestMemstore_Smoke(t *testing.T) {
 	}
 }
 
-// TestFilestore_Broken tries to marshal with a broken object
+// TestMemstore_Broken tries to marshal with a broken object.
 func TestMemstore_Broken(t *testing.T) {
-	f := make(Memstore)
+	f := MakeMemstore()
 
 	i := &BrokenMarshalable{
 		S: "Hi",
@@ -65,11 +65,11 @@ func TestMemstore_Broken(t *testing.T) {
 	}
 }
 
-// TestFilestore_Multiset makes sure we can continuously set the object and get
+// TestMemstore_Multiset makes sure we can continuously set the object and get
 // the right result each time (exercises the internal monotonic counter
-// functionality)
+// functionality).
 func TestMemstore_Multiset(t *testing.T) {
-	f := make(Memstore)
+	f := MakeMemstore()
 
 	for x := 0; x < 20; x++ {
 		expStr := fmt.Sprintf("Hi, %d!", x)
