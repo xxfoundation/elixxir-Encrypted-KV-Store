@@ -6,3 +6,5 @@ vendor/
 # Ignore vim .swp buffers for open files
 .*.swp
 .*.swo
+# Ignore ekv test files
+.ekv_testdir_*
