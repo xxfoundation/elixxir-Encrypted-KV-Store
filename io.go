@@ -30,6 +30,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/pkg/errors"
+	"gitlab.com/elixxir/ekv/portableOS"
 	"golang.org/x/crypto/blake2b"
 	"io"
 	"os"
@@ -84,7 +85,7 @@ func compareModMonCntr(t1, t2 byte) byte {
 // getFileOrder returns the newest and oldest files using the modular monotic
 // counter inside them. If either fails to read, the successful file is returned
 // if both fail to read, or return invalid results, return an error.
-func getFileOrder(path1, path2 string) (*os.File, *os.File, error) {
+func getFileOrder(path1, path2 string) (portableOS.File, portableOS.File, error) {
 	// default to invalid values. The only valid modulo monotonic counter
 	// values are 0, 1, and 2.
 	t1 := byte(3)
@@ -93,14 +94,14 @@ func getFileOrder(path1, path2 string) (*os.File, *os.File, error) {
 	buf := make([]byte, 1)
 
 	// Try to open and read file1
-	file1, err1 := os.Open(path1)
+	file1, err1 := portableOS.Open(path1)
 	if err1 == nil {
 		buf[0] = 3
 		_, err1 = file1.ReadAt(buf, 0)
 		t1 = buf[0]
 	}
 	// Try to open and read file2
-	file2, err2 := os.Open(path2)
+	file2, err2 := portableOS.Open(path2)
 	if err2 == nil {
 		buf[0] = 3
 		_, err2 = file2.ReadAt(buf, 0)
@@ -126,7 +127,7 @@ func getFileOrder(path1, path2 string) (*os.File, *os.File, error) {
 		return file1, nil, nil
 	}
 
-	// Otherwise comparethe modulo monotonic counter and return the result
+	// Otherwise compare the modulo monotonic counter and return the result
 	cmp := compareModMonCntr(t1, t2)
 	if cmp == 1 {
 		return file1, file2, nil
@@ -141,7 +142,7 @@ func getFileOrder(path1, path2 string) (*os.File, *os.File, error) {
 // readContents of a file, checking the checksum and returning the data.
 // this function assumes the file read header is at the beginning of the content
 // block
-func readContents(f *os.File) ([]byte, error) {
+func readContents(f portableOS.File) ([]byte, error) {
 	// Read the contents size
 	sizeBytes := make([]byte, 4)
 	_, _ = f.Seek(1, 0)
@@ -190,9 +191,9 @@ func readContents(f *os.File) ([]byte, error) {
 
 // createFile creates the file, flushes the directory then returns an open,
 // writable file handle
-func createFile(path string) (*os.File, error) {
+func createFile(path string) (portableOS.File, error) {
 	// Create file if is it is a "does not exist error"
-	f, err := os.Create(path)
+	f, err := portableOS.Create(path)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -201,17 +202,17 @@ func createFile(path string) (*os.File, error) {
 
 	// Open directory and flush it
 	dirname := filepath.Dir(path)
-	d, err := os.Open(dirname)
+	d, err := portableOS.Open(dirname)
 	d.Sync()
 	d.Close()
 
-	return os.Create(path)
+	return portableOS.Create(path)
 }
 
 // deleteFile overwrites a files contents with random data and then deletes
 // the file
 func deleteFile(path string, csprng io.Reader) error {
-	info, err := os.Stat(path)
+	info, err := portableOS.Stat(path)
 	if os.IsNotExist(err) {
 		return nil
 	}
@@ -224,7 +225,7 @@ func deleteFile(path string, csprng io.Reader) error {
 	if _, err = io.ReadFull(csprng, buf); err != nil {
 		return err
 	}
-	f, err := os.Create(path)
+	f, err := portableOS.Create(path)
 	if err != nil {
 		return err
 	}
@@ -234,7 +235,7 @@ func deleteFile(path string, csprng io.Reader) error {
 	}
 	f.Close()
 	f.Sync()
-	err = os.Remove(path)
+	err = portableOS.Remove(path)
 	return err
 }
 
@@ -255,7 +256,7 @@ func deleteFiles(path string, csprng io.Reader) error {
 
 	// Open directory and flush it
 	dirname := filepath.Dir(path)
-	d, err := os.Open(dirname)
+	d, err := portableOS.Open(dirname)
 	d.Sync()
 	d.Close()
 
@@ -277,7 +278,7 @@ func write(path string, data []byte) error {
 		defer oldest.Close()
 	}
 
-	filesToRead := []*os.File{newest, oldest}
+	filesToRead := []portableOS.File{newest, oldest}
 	modMonCntr := byte(2) // (2+1)%3 defaults to 0 when we can't read it
 	filePathThatWasRead := ""
 	for i := 0; i < len(filesToRead); i++ {
@@ -297,7 +298,7 @@ func write(path string, data []byte) error {
 	}
 
 	// Set the file to write, based on which file was read, if any
-	var fileToWrite *os.File
+	var fileToWrite portableOS.File
 	var filePathToWrite string
 	if filePathThatWasRead == "" || filePathThatWasRead == path2 {
 		filePathToWrite = path1
@@ -351,7 +352,7 @@ func write(path string, data []byte) error {
 	fileToWrite.Close()
 
 	// Check that what we wrote is equal to what we have
-	fileToWrite, err = os.Open(filePathToWrite)
+	fileToWrite, err = portableOS.Open(filePathToWrite)
 	if err != nil {
 		return err
 	}
@@ -385,7 +386,7 @@ func read(path string) ([]byte, error) {
 
 	// Return the first file we can read the contents and validate a
 	// checksum, or an error
-	filesToRead := []*os.File{newest, oldest}
+	filesToRead := []portableOS.File{newest, oldest}
 	for i := 0; i < len(filesToRead); i++ {
 		if filesToRead[i] == nil {
 			continue
