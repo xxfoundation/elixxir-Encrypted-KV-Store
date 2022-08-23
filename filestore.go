@@ -13,6 +13,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/pkg/errors"
+	"gitlab.com/elixxir/ekv/portableOS"
 	"io"
 	"os"
 	"sync"
@@ -41,7 +42,7 @@ func NewFilestore(basedir, password string) (*Filestore, error) {
 func NewFilestoreWithNonceGenerator(basedir, password string,
 	csprng io.Reader) (*Filestore, error) {
 	// Create the directory if it doesn't exist, otherwise do nothing.
-	err := os.MkdirAll(basedir, 0700)
+	err := portableOS.MkdirAll(basedir, 0700)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -63,7 +64,7 @@ func NewFilestoreWithNonceGenerator(basedir, password string,
 			}
 
 			if !bytes.Equal(ekvContents, expectedContents) {
-				return nil, errors.Errorf("Bad decryption: " +
+				return nil, errors.Errorf("Bad decryption: "+
 					"%s != %s", ekvContents,
 					expectedContents)
 			}
