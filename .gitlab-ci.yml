@@ -23,3 +23,10 @@ test:
   artifacts:
     paths:
       - testdata/
+
+wasm-test:
+    image: docker-registry.xx.network/elixxir/sysadmin/backend-ci:go1.17-wasm
+    stage: test
+    script:
+        - export PATH=/root/go/bin:$PATH
+        - GOOS=js GOARCH=wasm go test ./...
