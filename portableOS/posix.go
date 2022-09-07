@@ -45,7 +45,7 @@ var RemoveAll = os.RemoveAll
 // umask) are used for all directories that MkdirAll creates. If path is already
 // a directory, MkdirAll does nothing and returns nil.
 var MkdirAll = func(path string, perm FileMode) error {
-	return os.MkdirAll(path, os.FileMode(5))
+	return os.MkdirAll(path, os.FileMode(perm))
 }
 
 // Stat returns a FileInfo describing the named file.
