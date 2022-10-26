@@ -9,8 +9,6 @@ package ekv
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
-	"gitlab.com/elixxir/ekv/portableOS"
 	"io/ioutil"
 	"math"
 	"os"
@@ -18,6 +16,9 @@ import (
 	"runtime/debug"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
+	"gitlab.com/elixxir/ekv/portableOS"
 )
 
 // This is a simple marshalable object
@@ -267,15 +268,19 @@ func TestFilestore_BadPass(t *testing.T) {
 func TestFilestore_FDCount(t *testing.T) {
 	// Check if we have a linux /proc/self/fd file.
 	fdpath := "/proc/self/fd"
+	hasFDStat := true
 	fdStat, err := portableOS.Stat(fdpath)
 	if os.IsNotExist(err) || !fdStat.IsDir() {
-		t.Logf("Could not find /proc/self/fd, cannot run this test")
-		return
+		t.Logf("Could not find /proc/self/fd, running without counts")
+		hasFDStat = false
 	}
 
 	baseDir := ".ekv_testdir_fdcount"
 
 	getFDCount := func() int {
+		if !hasFDStat {
+			return 0
+		}
 		files, err := ioutil.ReadDir("/proc/self/fd")
 		if err != nil {
 			t.Errorf(err.Error())
