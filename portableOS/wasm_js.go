@@ -46,7 +46,7 @@ var Remove = func(name string) error {
 // returns nil (no error).
 // If there is an error, it will be of type *PathError.
 var RemoveAll = func(path string) error {
-	for loaded.Load() == false {
+	for !loaded.Load() {
 		time.Sleep(10 * time.Millisecond)
 	}
 
@@ -69,7 +69,7 @@ var RemoveAll = func(path string) error {
 // umask) are used for all directories that MkdirAll creates. If path is already
 // a directory, MkdirAll does nothing and returns nil.
 var MkdirAll = func(path string, perm FileMode) error {
-	for loaded.Load() == false {
+	for !loaded.Load() {
 		time.Sleep(10 * time.Millisecond)
 	}
 
