@@ -280,12 +280,16 @@ func (s *indexStore) key(n int) (string, error) {
 			"Unable to open Cursor: %+v", err)
 	}
 
-	// Advance the cursor and return its value
-	err = cursor.Advance(uint(n))
-	if err != nil {
-		return "", errors.WithMessagef(parentErr,
-			"Unable to advance Cursor: %+v", err)
+	// Advance the cursor if needed
+	if n > 0 {
+		err = cursor.Advance(uint(n))
+		if err != nil {
+			return "", errors.WithMessagef(parentErr,
+				"Unable to advance Cursor: %+v", err)
+		}
 	}
+
+	// Return cursor value
 	value, err := cursor.Value()
 	if err != nil {
 		return "", errors.WithMessagef(parentErr,
