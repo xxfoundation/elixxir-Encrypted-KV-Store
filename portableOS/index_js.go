@@ -65,8 +65,6 @@ func newIndexStore() (*indexStore, error) {
 	defer cancel()
 	openRequest, err := idb.Global().Open(ctx, DatabaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
-			jww.INFO.Printf("[EKV] IndexDB start oldVersion %d, "+
-				"newVersion %d", oldVersion, newVersion)
 			if oldVersion == newVersion {
 				jww.INFO.Printf("[EKV] IndexDb %s "+
 					"version is current: v%d",
@@ -86,8 +84,7 @@ func newIndexStore() (*indexStore, error) {
 				oldVersion = 1
 			}
 
-			// if oldVersion == 1 && newVersion >= 2 {
-			// v2Upgrade(), oldVersion = 2 }
+			// if oldVersion == 1 && newVersion >= 2 { v2Upgrade(), oldVersion = 2 }
 			return nil
 		})
 	if err != nil {
@@ -142,7 +139,7 @@ func (s *indexStore) getItem(keyName string) ([]byte, error) {
 	}
 
 	// Perform the operation
-	getRequest, err := store.Get(CopyBytesToJS([]byte(keyName)))
+	getRequest, err := store.Get(js.ValueOf(keyName))
 	if err != nil {
 		return nil, errors.WithMessagef(parentErr,
 			"Unable to Get: %+v", err)
@@ -188,7 +185,7 @@ func (s *indexStore) setItem(keyName string, keyValue []byte) {
 	}
 
 	// Perform the operation
-	_, err = store.PutKey(CopyBytesToJS([]byte(keyName)), CopyBytesToJS(keyValue))
+	_, err = store.PutKey(js.ValueOf(keyName), CopyBytesToJS(keyValue))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to Put Key: %+v", err))
@@ -233,7 +230,7 @@ func (s *indexStore) removeItem(keyName string) {
 	}
 
 	// Perform the operation
-	_, err = store.Delete(CopyBytesToJS([]byte(keyName)))
+	_, err = store.Delete(js.ValueOf(keyName))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to Delete Key: %+v", err))
