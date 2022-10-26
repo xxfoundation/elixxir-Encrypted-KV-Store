@@ -149,7 +149,7 @@ func (s *indexStore) getItem(keyName string) ([]byte, error) {
 	}
 
 	jww.DEBUG.Printf("Got from %s/%s", stateStoreName, keyName)
-	return []byte(resultObj.String()), nil
+	return CopyBytesToGo(resultObj), nil
 }
 
 // setItem adds a key's value to local storage given its name. Underneath, it
@@ -292,7 +292,7 @@ func (s *indexStore) key(n int) (string, error) {
 		return "", errors.WithMessagef(parentErr,
 			"Unable to get Cursor value: %+v", err)
 	}
-	return value.String(), nil
+	return string(CopyBytesToGo(value)), nil
 }
 
 // length returns the number of keys in localStorage. Underneath, it accesses
