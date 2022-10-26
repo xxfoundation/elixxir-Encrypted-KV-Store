@@ -42,7 +42,7 @@ type indexStore struct {
 	db *idb.Database
 }
 
-var jsDb *indexStore = nil
+var jsDb *indexStore
 
 func InitDB() {
 	var err error
@@ -50,6 +50,7 @@ func InitDB() {
 	if err != nil {
 		jww.FATAL.Panicf("Failed to initialise indexedDb: %+v", err)
 	}
+	jww.INFO.Printf("[EKV] jsDb initialized")
 }
 
 // newIndexStore creates the [idb.Database] and returns a wasmModel.
@@ -60,12 +61,14 @@ func newIndexStore() (*indexStore, error) {
 	openRequest, err := idb.Global().Open(ctx, DatabaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
-				jww.INFO.Printf("IndexDb %s version is current: v%d",
+				jww.INFO.Printf("[EKV] IndexDb %s "+
+					"version is current: v%d",
 					DatabaseName, newVersion)
 				return nil
 			}
 
-			jww.INFO.Printf("IndexDb %s upgrade required: v%d -> v%d",
+			jww.INFO.Printf("[EKV] IndexDb %s "+
+				"upgrade required: v%d -> v%d",
 				DatabaseName, oldVersion, newVersion)
 
 			if oldVersion == 0 && newVersion >= 1 {
@@ -76,7 +79,8 @@ func newIndexStore() (*indexStore, error) {
 				oldVersion = 1
 			}
 
-			// if oldVersion == 1 && newVersion >= 2 { v2Upgrade(), oldVersion = 2 }
+			// if oldVersion == 1 && newVersion >= 2 {
+			// v2Upgrade(), oldVersion = 2 }
 			return nil
 		})
 	if err != nil {
