@@ -12,6 +12,7 @@ package portableOS
 import (
 	"context"
 	"github.com/pkg/errors"
+	"os"
 	"syscall/js"
 	"time"
 
@@ -142,6 +143,8 @@ func (s *indexStore) getItem(keyName string) ([]byte, error) {
 	if err != nil {
 		return nil, errors.WithMessagef(parentErr,
 			"Unable to get from ObjectStore: %+v", err)
+	} else if resultObj.IsUndefined() {
+		return nil, os.ErrNotExist
 	}
 
 	jww.DEBUG.Printf("Got from %s/%s", stateStoreName, keyName)
