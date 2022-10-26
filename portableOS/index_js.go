@@ -86,7 +86,7 @@ func newIndexStore() (*indexStore, error) {
 func v1Upgrade(db *idb.Database) error {
 	storeOpts := idb.ObjectStoreOptions{
 		KeyPath:       js.ValueOf(pkeyName),
-		AutoIncrement: true,
+		AutoIncrement: false,
 	}
 
 	// Build Message ObjectStore and Indexes
