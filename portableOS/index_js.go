@@ -304,7 +304,7 @@ func (s *indexStore) key(n int) (string, error) {
 		return "", errors.WithMessagef(parentErr,
 			"Unable to get Cursor value: %+v", err)
 	}
-	return string(CopyBytesToGo(value)), nil
+	return value.String(), nil
 }
 
 // length returns the number of keys in localStorage. Underneath, it accesses
