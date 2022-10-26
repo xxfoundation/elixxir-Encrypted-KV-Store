@@ -40,6 +40,16 @@ type indexStore struct {
 	db *idb.Database
 }
 
+var jsDb *indexStore
+
+func init() {
+	var err error
+	jsDb, err = newIndexStore()
+	if err != nil {
+		jww.FATAL.Panicf("Failed to initialise indexedDb: %+v", err)
+	}
+}
+
 // newIndexStore creates the [idb.Database] and returns a wasmModel.
 func newIndexStore() (*indexStore, error) {
 	// Attempt to open database object
@@ -119,7 +129,7 @@ func (s *indexStore) getItem(keyName string) ([]byte, error) {
 	}
 
 	// Perform the operation
-	getRequest, err := store.Get(js.ValueOf([]byte(keyName)))
+	getRequest, err := store.Get(CopyBytesToJS([]byte(keyName)))
 	if err != nil {
 		return nil, errors.WithMessagef(parentErr,
 			"Unable to Get: %+v", err)
@@ -135,7 +145,7 @@ func (s *indexStore) getItem(keyName string) ([]byte, error) {
 	}
 
 	jww.DEBUG.Printf("Got from %s/%s", stateStoreName, keyName)
-	return []byte(resultObj.String()), nil
+	return CopyBytesToGo(resultObj), nil
 }
 
 // setItem adds a key's value to local storage given its name. Underneath, it
@@ -163,7 +173,7 @@ func (s *indexStore) setItem(keyName string, keyValue []byte) {
 	}
 
 	// Perform the operation
-	_, err = store.PutKey(js.ValueOf([]byte(keyName)), js.ValueOf(keyValue))
+	_, err = store.PutKey(CopyBytesToJS([]byte(keyName)), CopyBytesToJS(keyValue))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to Put Key: %+v", err))
@@ -208,7 +218,7 @@ func (s *indexStore) removeItem(keyName string) {
 	}
 
 	// Perform the operation
-	_, err = store.Delete(js.ValueOf([]byte(keyName)))
+	_, err = store.Delete(CopyBytesToJS([]byte(keyName)))
 	if err != nil {
 		jww.ERROR.Printf("%+v", errors.WithMessagef(parentErr,
 			"Unable to Delete Key: %+v", err))
@@ -278,7 +288,7 @@ func (s *indexStore) key(n int) (string, error) {
 		return "", errors.WithMessagef(parentErr,
 			"Unable to get Cursor value: %+v", err)
 	}
-	return value.String(), nil
+	return string(CopyBytesToGo(value)), nil
 }
 
 // length returns the number of keys in localStorage. Underneath, it accesses
@@ -325,4 +335,24 @@ func (s *indexStore) length() int {
 
 	jww.DEBUG.Printf("Successful length: %d", countResult)
 	return int(countResult)
+}
+
+// Uint8Array is the Javascript Uint8Array object. It is used to create new
+// Uint8Array.
+var Uint8Array = js.Global().Get("Uint8Array")
+
+// CopyBytesToGo copies the [Uint8Array] stored in the [js.Value] to []byte.
+// This is a wrapper for [js.CopyBytesToGo] to make it more convenient.
+func CopyBytesToGo(src js.Value) []byte {
+	b := make([]byte, src.Length())
+	js.CopyBytesToGo(b, src)
+	return b
+}
+
+// CopyBytesToJS copies the []byte to a [Uint8Array] stored in a [js.Value].
+// This is a wrapper for [js.CopyBytesToJS] to make it more convenient.
+func CopyBytesToJS(src []byte) js.Value {
+	dst := Uint8Array.New(len(src))
+	js.CopyBytesToJS(dst, src)
+	return dst
 }

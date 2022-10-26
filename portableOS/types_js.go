@@ -18,13 +18,13 @@ import (
 type jsFile struct {
 	keyName string
 	reader  *bytes.Reader
-	storage *jsStore
+	storage *indexStore
 	dirty   bool // Is true when data on disk is different from in memory
 	mux     sync.Mutex
 }
 
 // open creates a new in-memory file buffer of the key value.
-func open(keyName, keyValue string, storage *jsStore) *jsFile {
+func open(keyName, keyValue string, storage *indexStore) *jsFile {
 	f := &jsFile{
 		keyName: keyName,
 		reader:  bytes.NewReader([]byte(keyValue)),
