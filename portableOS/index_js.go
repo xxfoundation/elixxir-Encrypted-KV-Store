@@ -27,7 +27,7 @@ const (
 
 	// currentVersion is the current version of the IndexDb
 	// runtime. Used for migration purposes.
-	currentVersion uint = 1
+	currentVersion uint = 2
 
 	// Text representation of the names of the [idb.ObjectStore].
 	stateStoreName = "state"
@@ -60,6 +60,8 @@ func newIndexStore() (*indexStore, error) {
 	defer cancel()
 	openRequest, err := idb.Global().Open(ctx, DatabaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
+			jww.INFO.Printf("[EKV] IndexDB start oldVersion %d, "+
+				"newVersion %d", oldVersion, newVersion)
 			if oldVersion == newVersion {
 				jww.INFO.Printf("[EKV] IndexDb %s "+
 					"version is current: v%d",
@@ -71,7 +73,8 @@ func newIndexStore() (*indexStore, error) {
 				"upgrade required: v%d -> v%d",
 				DatabaseName, oldVersion, newVersion)
 
-			if oldVersion == 0 && newVersion >= 1 {
+			if oldVersion == 0 || oldVersion == 1 &&
+				newVersion >= 2 {
 				err := v1Upgrade(db)
 				if err != nil {
 					return err
@@ -89,7 +92,6 @@ func newIndexStore() (*indexStore, error) {
 
 	// Wait for database open to finish
 	db, err := openRequest.Await(ctx)
-	time.Sleep(10 * time.Second)
 	return &indexStore{db: db}, err
 }
 
