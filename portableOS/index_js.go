@@ -27,9 +27,6 @@ const (
 	// runtime. Used for migration purposes.
 	currentVersion uint = 1
 
-	// Text representation of primary key value (keyPath).
-	pkeyName = "id"
-
 	// Text representation of the names of the [idb.ObjectStore].
 	stateStoreName = "state"
 
@@ -85,7 +82,6 @@ func newIndexStore() (*indexStore, error) {
 // compatibility.
 func v1Upgrade(db *idb.Database) error {
 	storeOpts := idb.ObjectStoreOptions{
-		KeyPath:       js.ValueOf(pkeyName),
 		AutoIncrement: false,
 	}
 
