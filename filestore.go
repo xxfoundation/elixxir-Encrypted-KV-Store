@@ -12,12 +12,17 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/pkg/errors"
-	"gitlab.com/elixxir/ekv/portableOS"
 	"io"
 	"os"
 	"sync"
+
+	jww "github.com/spf13/jwalterweatherman"
+
+	"github.com/pkg/errors"
+	"gitlab.com/elixxir/ekv/portableOS"
 )
+
+const enableInsecureDebugging = true
 
 // Filestore implements an ekv by reading and writing to files in a
 // directory.
@@ -184,12 +189,25 @@ func (f *Filestore) getData(key string) ([]byte, error) {
 	if err == nil {
 		decryptedContents, err = decrypt(encryptedContents, f.password)
 	}
+
+	if enableInsecureDebugging {
+		jww.TRACE.Printf("[EKV] Get %s -> %s, ciphertet %d bytes, "+
+			"encrypted %d bytes", encryptedKey, key,
+			len(encryptedContents),
+			len(decryptedContents))
+	}
 	return decryptedContents, errors.WithStack(err)
 }
 
 func (f *Filestore) setData(key string, data []byte) error {
 	encryptedKey := f.getKey(key)
 	encryptedContents := encrypt(data, f.password, f.csprng)
+
+	if enableInsecureDebugging {
+		jww.TRACE.Printf("[EKV] Set %s -> %s, ciphertet %d bytes, "+
+			"encrypted %d bytes", key, encryptedKey, len(data),
+			len(encryptedContents))
+	}
 
 	lck := f.getLock(encryptedKey)
 	lck.Lock()
