@@ -42,7 +42,7 @@ type indexStore struct {
 	db *idb.Database
 }
 
-var jsDb *indexStore
+var jsDb *indexStore = nil
 
 func InitDB() {
 	var err error

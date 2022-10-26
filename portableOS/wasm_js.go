@@ -45,6 +45,9 @@ var Remove = func(name string) error {
 // returns nil (no error).
 // If there is an error, it will be of type *PathError.
 var RemoveAll = func(path string) error {
+	if jsDb == nil {
+		InitDB()
+	}
 	for i := 0; i < jsDb.length(); i++ {
 		keyName, err := jsDb.key(i)
 		if err != nil {
