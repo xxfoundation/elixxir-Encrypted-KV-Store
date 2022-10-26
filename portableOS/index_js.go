@@ -11,18 +11,19 @@ package portableOS
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"os"
 	"syscall/js"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
 )
 
 const (
-	// databaseName is the name of the [idb.Database].
-	databaseName = "ekv"
+	// DatabaseName is the name of the [idb.Database].
+	DatabaseName = "ekv"
 
 	// currentVersion is the current version of the IndexDb
 	// runtime. Used for migration purposes.
@@ -43,7 +44,7 @@ type indexStore struct {
 
 var jsDb *indexStore
 
-func init() {
+func InitDB() {
 	var err error
 	jsDb, err = newIndexStore()
 	if err != nil {
@@ -56,16 +57,16 @@ func newIndexStore() (*indexStore, error) {
 	// Attempt to open database object
 	ctx, cancel := newContext()
 	defer cancel()
-	openRequest, err := idb.Global().Open(ctx, databaseName, currentVersion,
+	openRequest, err := idb.Global().Open(ctx, DatabaseName, currentVersion,
 		func(db *idb.Database, oldVersion, newVersion uint) error {
 			if oldVersion == newVersion {
 				jww.INFO.Printf("IndexDb %s version is current: v%d",
-					databaseName, newVersion)
+					DatabaseName, newVersion)
 				return nil
 			}
 
 			jww.INFO.Printf("IndexDb %s upgrade required: v%d -> v%d",
-				databaseName, oldVersion, newVersion)
+				DatabaseName, oldVersion, newVersion)
 
 			if oldVersion == 0 && newVersion >= 1 {
 				err := v1Upgrade(db)

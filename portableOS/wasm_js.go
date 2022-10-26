@@ -64,6 +64,11 @@ var RemoveAll = func(path string) error {
 // umask) are used for all directories that MkdirAll creates. If path is already
 // a directory, MkdirAll does nothing and returns nil.
 var MkdirAll = func(path string, perm FileMode) error {
+	if jsDb == nil {
+		// NOTE: This is kind of a hack, but MkDirAll is
+		// always called first, so we initialize the DB here.
+		InitDB()
+	}
 	jsDb.setItem(path, []byte(""))
 	open(path, "", jsDb)
 	return nil
