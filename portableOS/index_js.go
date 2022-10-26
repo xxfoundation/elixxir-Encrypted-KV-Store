@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"go.uber.org/atomic"
 
 	"github.com/hack-pad/go-indexeddb/idb"
 	jww "github.com/spf13/jwalterweatherman"
@@ -27,7 +28,7 @@ const (
 
 	// currentVersion is the current version of the IndexDb
 	// runtime. Used for migration purposes.
-	currentVersion uint = 2
+	currentVersion uint = 1
 
 	// Text representation of the names of the [idb.ObjectStore].
 	stateStoreName = "state"
@@ -43,14 +44,18 @@ type indexStore struct {
 }
 
 var jsDb *indexStore
+var loaded = atomic.Bool{}
 
-func InitDB() {
-	var err error
-	jsDb, err = newIndexStore()
-	if err != nil {
-		jww.FATAL.Panicf("Failed to initialise indexedDb: %+v", err)
-	}
-	jww.INFO.Printf("[EKV] jsDb initialized")
+func init() {
+	go func() {
+		var err error
+		jsDb, err = newIndexStore()
+		if err != nil {
+			jww.FATAL.Panicf("Failed to initialise indexedDb: %+v", err)
+		}
+		jww.INFO.Printf("[EKV] jsDb initialized")
+		loaded.Store(true)
+	}()
 }
 
 // newIndexStore creates the [idb.Database] and returns a wasmModel.
@@ -73,8 +78,7 @@ func newIndexStore() (*indexStore, error) {
 				"upgrade required: v%d -> v%d",
 				DatabaseName, oldVersion, newVersion)
 
-			if oldVersion == 0 || oldVersion == 1 &&
-				newVersion >= 2 {
+			if oldVersion == 0 && newVersion >= 1 {
 				err := v1Upgrade(db)
 				if err != nil {
 					return err

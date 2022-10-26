@@ -11,6 +11,7 @@ package portableOS
 
 import (
 	"strings"
+	"time"
 )
 
 // Open opens the named file for reading. If successful, methods on the returned
@@ -45,9 +46,10 @@ var Remove = func(name string) error {
 // returns nil (no error).
 // If there is an error, it will be of type *PathError.
 var RemoveAll = func(path string) error {
-	if jsDb == nil {
-		InitDB()
+	for loaded.Load() == false {
+		time.Sleep(10 * time.Millisecond)
 	}
+
 	for i := 0; i < jsDb.length(); i++ {
 		keyName, err := jsDb.key(i)
 		if err != nil {
@@ -67,11 +69,10 @@ var RemoveAll = func(path string) error {
 // umask) are used for all directories that MkdirAll creates. If path is already
 // a directory, MkdirAll does nothing and returns nil.
 var MkdirAll = func(path string, perm FileMode) error {
-	if jsDb == nil {
-		// NOTE: This is kind of a hack, but MkDirAll is
-		// always called first, so we initialize the DB here.
-		InitDB()
+	for loaded.Load() == false {
+		time.Sleep(10 * time.Millisecond)
 	}
+
 	jsDb.setItem(path, []byte(""))
 	open(path, "", jsDb)
 	return nil
