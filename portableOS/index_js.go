@@ -35,7 +35,7 @@ const (
 
 	// dbTimeout is the global timeout for operations with the storage
 	// [context.Context].
-	dbTimeout = 3 * time.Second
+	dbTimeout = 10 * time.Second
 )
 
 // indexStore contains the js.Value representation of localStorage.
