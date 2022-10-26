@@ -89,6 +89,7 @@ func newIndexStore() (*indexStore, error) {
 
 	// Wait for database open to finish
 	db, err := openRequest.Await(ctx)
+	time.Sleep(10 * time.Second)
 	return &indexStore{db: db}, err
 }
 
