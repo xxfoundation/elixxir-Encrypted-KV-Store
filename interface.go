@@ -8,9 +8,10 @@
 package ekv
 
 import (
-	"github.com/pkg/errors"
 	"os"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // Marshaler interface defines objects which can "Marshal" themselves into a
@@ -32,11 +33,20 @@ type Unmarshaler interface {
 // version of these is provided which should use JSON or another generic object
 // encoding system.
 type KeyValue interface {
+	// Set stores using an object that can marshal itself
 	Set(key string, objectToStore Marshaler) error
+	// Get loads into an object that can unmarshal itself
 	Get(key string, loadIntoThisObject Unmarshaler) error
+	// Delete destroys a key
 	Delete(key string) error
+	// SetInterface uses a JSON encoder to store an interface object
 	SetInterface(key string, objectToSTore interface{}) error
+	// GetInterface uses a JSON decord to load an interface object
 	GetInterface(key string, v interface{}) error
+	// SetBytes stores raw bytes
+	SetBytes(key string, data []byte) error
+	// GetBytes loads raw bytes
+	GetBytes(key string) ([]byte, error)
 }
 
 // Exists determines if the error message is known to report the key does not

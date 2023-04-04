@@ -9,8 +9,9 @@ package ekv
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -30,29 +31,21 @@ func MakeMemstore() *Memstore {
 	return &Memstore{store: make(map[string][]byte)}
 }
 
-// Set stores the value if there's no serialization error.
+// Set stores the value if there's no serialization error per [KeyValue.Set]
 func (m *Memstore) Set(key string, objectToStore Marshaler) error {
-	m.mux.Lock()
-	defer m.mux.Unlock()
-
-	ser := objectToStore.Marshal()
-	m.store[key] = ser
-	return nil
+	return m.SetBytes(key, objectToStore.Marshal())
 }
 
-// Get returns the value.
+// Get implements [KeyValue.Get]
 func (m *Memstore) Get(key string, loadIntoThisObject Unmarshaler) error {
-	m.mux.RLock()
-	defer m.mux.RUnlock()
-
-	data, ok := m.store[key]
-	if !ok {
-		return errors.New(objectNotFoundErr)
+	data, err := m.GetBytes(key)
+	if err != nil {
+		return err
 	}
 	return loadIntoThisObject.Unmarshal(data)
 }
 
-// Delete removes the value from the store.
+// Delete removes the value from the store per [KeyValue.Delete]
 func (m *Memstore) Delete(key string) error {
 	m.mux.Lock()
 	defer m.mux.Unlock()
@@ -61,33 +54,45 @@ func (m *Memstore) Delete(key string) error {
 	return nil
 }
 
-// SetInterface sets the value using a JSON encoder.
+// SetInterface sets the value using a JSON encoder per [KeyValue.SetInterface]
 func (m *Memstore) SetInterface(key string, objectToStore interface{}) error {
-	m.mux.Lock()
-	defer m.mux.Unlock()
-
 	data, err := json.Marshal(objectToStore)
 	if err != nil {
 		return errors.Wrap(err, setInterfaceErr)
 	}
-
-	m.store[key] = data
-	return nil
+	return m.SetBytes(key, data)
 }
 
-// GetInterface gets the value using a JSON encoder.
+// GetInterface gets the value using a JSON encoder per [KeyValue.GetInterface]
 func (m *Memstore) GetInterface(key string, objectToLoad interface{}) error {
-	m.mux.Lock()
-	defer m.mux.Unlock()
-
-	data, ok := m.store[key]
-	if !ok {
-		return errors.New(objectNotFoundErr)
+	data, err := m.GetBytes(key)
+	if err != nil {
+		return err
 	}
 
-	err := json.Unmarshal(data, objectToLoad)
+	err = json.Unmarshal(data, objectToLoad)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+// SetBytes implements [KeyValue.SetBytes]
+func (m *Memstore) SetBytes(key string, data []byte) error {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	m.store[key] = data
+	return nil
+}
+
+// SetBytes implements [KeyValue.GetBytes]
+func (m *Memstore) GetBytes(key string) ([]byte, error) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	data, ok := m.store[key]
+	if !ok {
+		return nil, errors.New(objectNotFoundErr)
+	}
+
+	return data, nil
 }
