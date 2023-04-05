@@ -25,7 +25,7 @@ test:
       - testdata/
 
 wasm-test:
-    image: docker-registry.xx.network/elixxir/sysadmin/backend-ci:go1.17-wasm
+    image: $DOCKER_IMAGE
     stage: test
     script:
         - export PATH=/root/go/bin:$PATH

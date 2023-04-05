@@ -12,11 +12,12 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/pkg/errors"
-	"gitlab.com/elixxir/ekv/portableOS"
 	"io"
 	"os"
 	"sync"
+
+	"github.com/pkg/errors"
+	"gitlab.com/elixxir/ekv/portableOS"
 )
 
 // Filestore implements an ekv by reading and writing to files in a
@@ -102,21 +103,21 @@ func (f *Filestore) Close() {
 	f.csprng = nil
 }
 
-// Set the value for the given key
+// Set the value for the given key per [KeyValue.Set]
 func (f *Filestore) Set(key string, objectToStore Marshaler) error {
-	return f.setData(key, objectToStore.Marshal())
+	return f.SetBytes(key, objectToStore.Marshal())
 }
 
-// Get the value for the given key
+// Get the value for the given key per [KeyValue.Get]
 func (f *Filestore) Get(key string, loadIntoThisObject Unmarshaler) error {
-	decryptedContents, err := f.getData(key)
+	decryptedContents, err := f.GetBytes(key)
 	if err == nil {
 		err = loadIntoThisObject.Unmarshal(decryptedContents)
 	}
 	return errors.WithStack(err)
 }
 
-// Delete the value for the given key
+// Delete the value for the given key per [KeyValue.Delete]
 func (f *Filestore) Delete(key string) error {
 	encryptedKey := f.getKey(key)
 	lck := f.getLock(encryptedKey)
@@ -125,18 +126,18 @@ func (f *Filestore) Delete(key string) error {
 	return deleteFiles(encryptedKey, f.csprng)
 }
 
-// SetInterface uses json to encode and set data.
+// SetInterface uses json to encode and set data per [KeyValue.SetInterface]
 func (f *Filestore) SetInterface(key string, objectToStore interface{}) error {
 	data, err := json.Marshal(objectToStore)
 	if err == nil {
-		err = f.setData(key, data)
+		err = f.SetBytes(key, data)
 	}
 	return errors.WithStack(err)
 }
 
-// GetInterface uses json to encode and get data
+// GetInterface uses json to encode and get data per [KeyValue.GetInterface]
 func (f *Filestore) GetInterface(key string, v interface{}) error {
-	data, err := f.getData(key)
+	data, err := f.GetBytes(key)
 	if err == nil {
 		err = json.Unmarshal(data, v)
 	}
@@ -166,13 +167,8 @@ func (f *Filestore) getLock(encryptedKey string) *sync.RWMutex {
 	return lck
 }
 
-func (f *Filestore) getKey(key string) string {
-	encryptedKey := hashStringWithPassword(key, f.password)
-	encryptedKeyStr := hex.EncodeToString(encryptedKey)
-	return f.basedir + string(os.PathSeparator) + encryptedKeyStr
-}
-
-func (f *Filestore) getData(key string) ([]byte, error) {
+// GetBytes implements [KeyValue.GetBytes]
+func (f *Filestore) GetBytes(key string) ([]byte, error) {
 	encryptedKey := f.getKey(key)
 	lck := f.getLock(encryptedKey)
 
@@ -187,7 +183,8 @@ func (f *Filestore) getData(key string) ([]byte, error) {
 	return decryptedContents, errors.WithStack(err)
 }
 
-func (f *Filestore) setData(key string, data []byte) error {
+// SetBytes implements [KeyValue.SetBytes]
+func (f *Filestore) SetBytes(key string, data []byte) error {
 	encryptedKey := f.getKey(key)
 	encryptedContents := encrypt(data, f.password, f.csprng)
 
@@ -200,4 +197,10 @@ func (f *Filestore) setData(key string, data []byte) error {
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func (f *Filestore) getKey(key string) string {
+	encryptedKey := hashStringWithPassword(key, f.password)
+	encryptedKeyStr := hex.EncodeToString(encryptedKey)
+	return f.basedir + string(os.PathSeparator) + encryptedKeyStr
 }
