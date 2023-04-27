@@ -199,6 +199,48 @@ func (f *Filestore) SetBytes(key string, data []byte) error {
 	return nil
 }
 
+// Transaction implements [KeyValue.Transaction]
+func (f *Filestore) Transaction(key string, op TransactionOperation) (
+	old []byte, existed bool, err error) {
+	encryptedKey := f.getKey(key)
+
+	lck := f.getLock(encryptedKey)
+	lck.Lock()
+	defer lck.Unlock()
+
+	//get the key
+	encryptedContents, err := read(encryptedKey)
+	// if an error is received which is not the file is not found, return it
+	hasfile := true
+	if err != nil {
+		if !Exists(err) {
+			hasfile = false
+		} else {
+			return nil, false, err
+		}
+	}
+	var decryptedContents []byte
+	if hasfile {
+		decryptedContents, err = decrypt(encryptedContents, f.password)
+		if err != nil {
+			return nil, true, err
+		}
+	}
+
+	data, err := op(decryptedContents, hasfile)
+	if err != nil {
+		return decryptedContents, hasfile, err
+	}
+
+	encryptedNewContents := encrypt(data, f.password, f.csprng)
+
+	err = write(encryptedKey, encryptedNewContents)
+	if err != nil {
+		return decryptedContents, hasfile, errors.WithStack(err)
+	}
+	return decryptedContents, hasfile, err
+}
+
 func (f *Filestore) getKey(key string) string {
 	encryptedKey := hashStringWithPassword(key, f.password)
 	encryptedKeyStr := hex.EncodeToString(encryptedKey)
