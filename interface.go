@@ -33,21 +33,28 @@ type Unmarshaler interface {
 // version of these is provided which should use JSON or another generic object
 // encoding system.
 type KeyValue interface {
-	// Set stores using an object that can marshal itself
+	// Set stores using an object that can marshal itself.
 	Set(key string, objectToStore Marshaler) error
-	// Get loads into an object that can unmarshal itself
+	// Get loads into an object that can unmarshal itself.
 	Get(key string, loadIntoThisObject Unmarshaler) error
-	// Delete destroys a key
+	// Delete destroys a key.
 	Delete(key string) error
-	// SetInterface uses a JSON encoder to store an interface object
+	// SetInterface uses a JSON encoder to store an interface object.
 	SetInterface(key string, objectToSTore interface{}) error
-	// GetInterface uses a JSON decord to load an interface object
+	// GetInterface uses a JSON decord to load an interface object.
 	GetInterface(key string, v interface{}) error
-	// SetBytes stores raw bytes
+	// SetBytes stores raw bytes.
 	SetBytes(key string, data []byte) error
-	// GetBytes loads raw bytes
+	// GetBytes loads raw bytes.
 	GetBytes(key string) ([]byte, error)
+	// Transaction locks a key while it is being mutated then stores the result
+	// and returns the old value if it existed.
+	// If the op returns an error, the operation will be aborted.
+	Transaction(key string, op TransactionOperation) (old []byte, existed bool,
+		err error)
 }
+
+type TransactionOperation func(old []byte, existed bool) (data []byte, err error)
 
 // Exists determines if the error message is known to report the key does not
 // exist. Returns true if the error does not specify or it is nil and false

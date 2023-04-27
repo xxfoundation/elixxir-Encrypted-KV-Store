@@ -96,3 +96,21 @@ func (m *Memstore) GetBytes(key string) ([]byte, error) {
 
 	return data, nil
 }
+
+// Transaction implements [KeyValue.Transaction]
+func (m *Memstore) Transaction(key string, op TransactionOperation) (
+	old []byte, existed bool, err error) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	old, existed = m.store[key]
+
+	var newData []byte
+	newData, err = op(old, existed)
+	if err != nil {
+		return nil, existed, err
+	}
+
+	m.store[key] = newData
+
+	return old, existed, nil
+}
