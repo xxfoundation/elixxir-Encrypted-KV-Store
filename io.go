@@ -47,6 +47,7 @@ const (
 	errInvalidSizeContents  = "Invalid contents size: %d"
 	errChecksum             = "Invalid Checksum %s: Actual(%X) != Expected(%X)"
 	errCannotRead           = "Did not read the same data that was written!"
+	ErrDeletesFailed        = "One or more deletions in the transaction failed"
 	errIsDir                = "File path is a directory: %s"
 	errInvalidFile          = "Invalid file"
 	modMonCntrSize          = 1

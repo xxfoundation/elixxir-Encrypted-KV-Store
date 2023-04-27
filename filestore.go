@@ -18,6 +18,8 @@ import (
 
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/ekv/portableOS"
+
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 // Filestore implements an ekv by reading and writing to files in a
@@ -239,6 +241,99 @@ func (f *Filestore) Transaction(key string, op TransactionOperation) (
 		return decryptedContents, hasfile, errors.WithStack(err)
 	}
 	return decryptedContents, hasfile, err
+}
+
+// MutualTransaction implements [KeyValue.MutualTransaction]
+func (f *Filestore) MutualTransaction(keys []string,
+	op MutualTransactionOperation) (map[string]Value, map[string]Value, error) {
+
+	//get all keys - map of key to encrypted key
+	encryptedKeys := make(map[string]string, len(keys))
+
+	for _, key := range keys {
+		encryptedKeys[key] = f.getKey(key)
+	}
+
+	//lock all key's locks
+	for _, encryptedKey := range keys {
+		lck := f.getLock(encryptedKey)
+		lck.Lock()
+		defer lck.Unlock()
+	}
+
+	//read each file
+	oldContents := make(map[string]Value, len(keys))
+	for key, encryptedKey := range encryptedKeys {
+		encryptedContents, err := read(encryptedKey)
+		hasfile := true
+		if err != nil {
+			if !Exists(err) {
+				hasfile = false
+			} else {
+				return nil, nil, errors.WithMessagef(err,
+					"Failed on loading from key %s", key)
+			}
+		}
+		var decryptedContents []byte
+		if hasfile {
+			decryptedContents, err = decrypt(encryptedContents, f.password)
+			if err != nil {
+				return nil, nil, errors.WithMessagef(err,
+					"Failed to decrypt from key %s", key)
+			}
+		}
+		oldContents[key] = Value{
+			Data:   decryptedContents,
+			Exists: hasfile,
+		}
+	}
+
+	//execute the op
+	data, err := op(oldContents)
+
+	if err != nil {
+		return oldContents, nil, errors.WithMessagef(err,
+			"Failed to execute transaction due to op failure")
+	}
+
+	// encrypt the data and write
+	// note: operations are ordered per the incoming key list so
+	// dependent keys can be put later in order to make it more likely
+	// the system will operate if a write failure occurs
+	deletions := make([]string, 0, len(keys))
+	for _, key := range keys {
+		v := data[key]
+		if v.Exists {
+			toWrite := encrypt(v.Data, f.password, f.csprng)
+			err = write(encryptedKeys[key], toWrite)
+			if err != nil {
+				jww.FATAL.Panicf("Failed to write key %s to disk: %+v")
+			}
+		} else {
+			deletions = append(deletions, key)
+		}
+	}
+
+	// execute all deletions
+	deletionFailure := false
+	for _, key := range deletions {
+		err = deleteFiles(encryptedKeys[key], f.csprng)
+		if err != nil {
+			data[key] = Value{
+				Data:   nil,
+				Exists: true,
+			}
+			jww.WARN.Printf("Deletion Failed for key %s: %+v\n",
+				key, err)
+			deletionFailure = true
+		}
+	}
+
+	if deletionFailure {
+		return oldContents, data, errors.New(ErrDeletesFailed)
+	}
+
+	return oldContents, data, nil
 }
 
 func (f *Filestore) getKey(key string) string {
