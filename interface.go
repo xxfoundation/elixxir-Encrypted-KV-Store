@@ -61,7 +61,8 @@ type KeyValue interface {
 		old, written map[string]Value, err error)
 }
 
-type TransactionOperation func(old []byte, existed bool) (data []byte, err error)
+type TransactionOperation func(old []byte, existed bool) (data []byte,
+	delete bool, err error)
 type MutualTransactionOperation func(map[string]Value) (
 	updates map[string]Value, err error)
 

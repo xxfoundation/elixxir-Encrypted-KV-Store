@@ -229,8 +229,13 @@ func (f *Filestore) Transaction(key string, op TransactionOperation) (
 		}
 	}
 
-	data, err := op(decryptedContents, hasfile)
+	data, deletion, err := op(decryptedContents, hasfile)
 	if err != nil {
+		return decryptedContents, hasfile, err
+	}
+
+	if deletion {
+		err = deleteFile(encryptedKey, f.csprng)
 		return decryptedContents, hasfile, err
 	}
 

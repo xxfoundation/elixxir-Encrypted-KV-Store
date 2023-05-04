@@ -105,12 +105,16 @@ func (m *Memstore) Transaction(key string, op TransactionOperation) (
 	old, existed = m.store[key]
 
 	var newData []byte
-	newData, err = op(old, existed)
+	var deletion bool
+	newData, deletion, err = op(old, existed)
 	if err != nil {
 		return nil, existed, err
 	}
-
-	m.store[key] = newData
+	if deletion {
+		delete(m.store, key)
+	} else {
+		m.store[key] = newData
+	}
 
 	return old, existed, nil
 }
