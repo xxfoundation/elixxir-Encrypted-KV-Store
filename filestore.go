@@ -17,6 +17,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/ekv/portableOS"
 )
 
@@ -187,7 +188,12 @@ func (f *Filestore) GetBytes(key string) ([]byte, error) {
 func (f *Filestore) SetBytes(key string, data []byte) error {
 	encryptedKey := f.getKey(key)
 	encryptedContents := encrypt(data, f.password, f.csprng)
-
+	jww.INFO.Printf(
+		"[KV FILE DEBUG],"+
+			"Key %s,"+
+			"encrypted key %s,"+
+			"length of encrypted data: %d,"+
+			key, encryptedKey, len(encryptedContents))
 	lck := f.getLock(encryptedKey)
 	lck.Lock()
 	defer lck.Unlock()
