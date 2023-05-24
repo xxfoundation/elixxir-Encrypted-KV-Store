@@ -17,6 +17,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/ekv/portableOS"
 )
 
@@ -120,9 +121,8 @@ func (f *Filestore) Get(key string, loadIntoThisObject Unmarshaler) error {
 // Delete the value for the given key per [KeyValue.Delete]
 func (f *Filestore) Delete(key string) error {
 	encryptedKey := f.getKey(key)
-	lck := f.getLock(encryptedKey)
-	lck.Lock()
-	defer lck.Unlock()
+	unlock := f.takeWriteLock(encryptedKey)
+	defer unlock()
 	return deleteFiles(encryptedKey, f.csprng)
 }
 
@@ -144,37 +144,13 @@ func (f *Filestore) GetInterface(key string, v interface{}) error {
 	return errors.WithStack(err)
 }
 
-// Internal helper functions
-
-func (f *Filestore) getLock(encryptedKey string) *sync.RWMutex {
-	f.RLock()
-	lck, ok := f.keyLocks[encryptedKey]
-	f.RUnlock()
-	if ok {
-		return lck
-	}
-	// Note that 2 threads can get to this line at the same time,
-	// which is why we check again after taking the write lock
-	f.Lock()
-	defer f.Unlock()
-
-	lck, ok = f.keyLocks[encryptedKey]
-	if ok {
-		return lck
-	}
-	lck = &sync.RWMutex{}
-	f.keyLocks[encryptedKey] = lck
-	return lck
-}
-
 // GetBytes implements [KeyValue.GetBytes]
 func (f *Filestore) GetBytes(key string) ([]byte, error) {
 	encryptedKey := f.getKey(key)
-	lck := f.getLock(encryptedKey)
+	unlock := f.takeReadLock(encryptedKey)
 
-	lck.RLock()
 	encryptedContents, err := read(encryptedKey)
-	lck.RUnlock()
+	unlock()
 
 	var decryptedContents []byte
 	if err == nil {
@@ -188,9 +164,8 @@ func (f *Filestore) SetBytes(key string, data []byte) error {
 	encryptedKey := f.getKey(key)
 	encryptedContents := encrypt(data, f.password, f.csprng)
 
-	lck := f.getLock(encryptedKey)
-	lck.Lock()
-	defer lck.Unlock()
+	unlock := f.takeWriteLock(encryptedKey)
+	defer unlock()
 
 	err := write(encryptedKey, encryptedContents)
 	if err != nil {
@@ -200,46 +175,281 @@ func (f *Filestore) SetBytes(key string, data []byte) error {
 }
 
 // Transaction implements [KeyValue.Transaction]
-func (f *Filestore) Transaction(key string, op TransactionOperation) (
-	old []byte, existed bool, err error) {
-	encryptedKey := f.getKey(key)
+func (f *Filestore) Transaction(op TransactionOperation, keys ...string) error {
 
-	lck := f.getLock(encryptedKey)
-	lck.Lock()
-	defer lck.Unlock()
-
-	//get the key
-	encryptedContents, err := read(encryptedKey)
-	// if an error is received which is not the file is not found, return it
-	hasfile := true
+	// setup and get the data
+	e := newExtendable(f)
+	defer e.close()
+	operables, err := e.Extend(keys)
 	if err != nil {
-		if !Exists(err) {
-			hasfile = false
-		} else {
-			return nil, false, err
-		}
-	}
-	var decryptedContents []byte
-	if hasfile {
-		decryptedContents, err = decrypt(encryptedContents, f.password)
-		if err != nil {
-			return nil, true, err
-		}
+		return err
 	}
 
-	data, err := op(decryptedContents, hasfile)
+	//do the operations
+	err = op(operables, e)
 	if err != nil {
-		return decryptedContents, hasfile, err
+		return err
 	}
 
-	encryptedNewContents := encrypt(data, f.password, f.csprng)
+	// flush operations
+	e.flush()
 
-	err = write(encryptedKey, encryptedNewContents)
-	if err != nil {
-		return decryptedContents, hasfile, errors.WithStack(err)
-	}
-	return decryptedContents, hasfile, err
+	return nil
 }
+
+// Internal helper functions
+
+func (f *Filestore) takeWriteLock(encryptedKey string) (unlock func()) {
+	f.RLock()
+	lck, ok := f.keyLocks[encryptedKey]
+	if ok {
+		lck.Lock()
+		f.RUnlock()
+		unlock = lck.Unlock
+		return unlock
+	}
+	f.RUnlock()
+
+	// Note that 2 threads can get to this line at the same time,
+	// which is why we check again after taking the write lock
+	f.Lock()
+
+	lck, ok = f.keyLocks[encryptedKey]
+	if !ok {
+		lck = &sync.RWMutex{}
+		f.keyLocks[encryptedKey] = lck
+	}
+	lck.Lock()
+	unlock = lck.Unlock
+	f.Unlock()
+	return unlock
+}
+
+func (f *Filestore) takeReadLock(encryptedKey string) (unlock func()) {
+	f.RLock()
+	lck, ok := f.keyLocks[encryptedKey]
+	if ok {
+		lck.RLock()
+		f.RUnlock()
+		unlock = lck.RUnlock
+		return unlock
+	}
+	f.RUnlock()
+
+	// Note that 2 threads can get to this line at the same time,
+	// which is why we check again after taking the write lock
+	f.Lock()
+
+	lck, ok = f.keyLocks[encryptedKey]
+	if !ok {
+		lck = &sync.RWMutex{}
+		f.keyLocks[encryptedKey] = lck
+	}
+	lck.RLock()
+	unlock = lck.RUnlock
+	f.Unlock()
+	return unlock
+}
+
+func (f *Filestore) takeTransactionLocks(encryptedKeys []string) (unlock func()) {
+	locks := make([]*sync.RWMutex, 0, len(encryptedKeys))
+
+	f.Lock()
+
+	for _, ecrKey := range encryptedKeys {
+		lck, ok := f.keyLocks[ecrKey]
+		if !ok {
+			lck = &sync.RWMutex{}
+			f.keyLocks[ecrKey] = lck
+		}
+		lck.Lock()
+		locks = append(locks, lck)
+	}
+
+	f.Unlock()
+
+	return func() {
+		for _, lck := range locks {
+			lck.Unlock()
+		}
+	}
+}
+
+type extendable struct {
+	closed    bool
+	unlock    func()
+	f         *Filestore
+	operables []map[string]Operable
+}
+
+func newExtendable(f *Filestore) *extendable {
+	return &extendable{
+		closed: false,
+		unlock: func() {},
+		f:      f,
+	}
+}
+
+func (e *extendable) Extend(keys []string) (map[string]Operable, error) {
+	if e.closed {
+		jww.FATAL.Panicf("Cannot extend, transaction already closed")
+	}
+	operables := make(map[string]Operable, len(keys))
+	ecrKeys := make([]string, len(keys))
+
+	// make the ecrypted keys
+	for i, key := range keys {
+		ecrkey := e.f.getKey(key)
+		operables[key] = &operable{
+			key:    key,
+			closed: false,
+			ecrKey: ecrkey,
+			op:     readOp,
+			f:      e.f,
+		}
+		ecrKeys[i] = ecrkey
+	}
+
+	// get the locks
+	e.addUnlock(e.f.takeTransactionLocks(ecrKeys))
+
+	// read the keys
+	for _, oper := range operables {
+		operInternal := oper.(*operable)
+		encryptedContents, err := read(operInternal.ecrKey)
+		// if an error is received which is not the file is not found, return it
+		hasfile := true
+		if err != nil {
+			if !Exists(err) {
+				hasfile = false
+			} else {
+				return nil, err
+			}
+		}
+
+		var decryptedContents []byte
+		if hasfile {
+			decryptedContents, err = decrypt(encryptedContents, e.f.password)
+			if err != nil {
+				return nil, err
+			}
+		}
+		operInternal.exists = hasfile
+		operInternal.data = decryptedContents
+	}
+	e.operables = append(e.operables, operables)
+	return operables, nil
+}
+
+func (e *extendable) IsClosed() bool {
+	return e.closed
+}
+
+func (e *extendable) addUnlock(u func()) {
+	oldUnlock := e.unlock
+	e.unlock = func() {
+		oldUnlock()
+		u()
+	}
+}
+
+func (e *extendable) flush() {
+	for _, opMap := range e.operables {
+		for _, oper := range opMap {
+			if !oper.IsClosed() {
+				if err := oper.Flush(); err != nil {
+					jww.FATAL.Panicf("Failed on a flush of key %s in "+
+						"transaction: %+v", oper.Key(), err)
+				}
+			}
+		}
+	}
+}
+
+func (e *extendable) close() {
+	e.closed = true
+	e.unlock()
+}
+
+type operable struct {
+	key    string
+	closed bool
+
+	ecrKey string
+
+	data   []byte
+	exists bool
+
+	op OperableOps
+
+	f *Filestore
+}
+
+func (op *operable) Key() string {
+	op.testClosed("Key()")
+	return op.key
+}
+
+func (op *operable) Exists() bool {
+	op.testClosed("Exists()")
+	return op.exists
+}
+
+func (op *operable) Delete() {
+	op.testClosed("Delete()")
+
+	op.data = nil
+	op.exists = false
+	op.op = deleteOp
+}
+
+func (op *operable) Set(data []byte) {
+	op.testClosed("Set()")
+
+	op.data = data
+	op.exists = true
+	op.op = writeOp
+}
+
+func (op *operable) Get() ([]byte, bool) {
+	op.testClosed("Get()")
+	return op.data, op.exists
+}
+
+func (op *operable) Flush() error {
+	op.testClosed("Flush()")
+	defer func() {
+		op.closed = true
+	}()
+	switch op.op {
+	case readOp:
+		return nil
+	case writeOp:
+		encryptedNewContents := encrypt(op.data, op.f.password, op.f.csprng)
+		return write(op.ecrKey, encryptedNewContents)
+	case deleteOp:
+		return deleteFiles(op.ecrKey, op.f.csprng)
+	}
+	return nil
+}
+
+func (op *operable) IsClosed() bool {
+	return op.closed
+}
+
+func (op *operable) testClosed(action string) {
+	if op.closed {
+		jww.FATAL.Panicf("Cannot '%s' on '%s', already closed", action, op.key)
+	}
+}
+
+type OperableOps uint8
+
+const (
+	readOp OperableOps = iota
+	writeOp
+	deleteOp
+)
 
 func (f *Filestore) getKey(key string) string {
 	encryptedKey := hashStringWithPassword(key, f.password)
