@@ -335,6 +335,7 @@ func (e *extendable) Extend(keys []string) (map[string]Operable, error) {
 			}
 		}
 		operInternal.exists = hasfile
+		operInternal.existed = hasfile
 		operInternal.data = decryptedContents
 	}
 	e.operables = append(e.operables, operables)
@@ -377,8 +378,9 @@ type operable struct {
 
 	ecrKey string
 
-	data   []byte
-	exists bool
+	data    []byte
+	exists  bool
+	existed bool
 
 	op OperableOps
 
@@ -428,7 +430,11 @@ func (op *operable) Flush() error {
 		encryptedNewContents := encrypt(op.data, op.f.password, op.f.csprng)
 		return write(op.ecrKey, encryptedNewContents)
 	case deleteOp:
-		return deleteFiles(op.ecrKey, op.f.csprng)
+		if op.existed {
+			return deleteFiles(op.ecrKey, op.f.csprng)
+		}
+		return nil
+
 	}
 	return nil
 }
