@@ -58,7 +58,7 @@ func (m *Memstore) Delete(key string) error {
 func (m *Memstore) SetInterface(key string, objectToStore interface{}) error {
 	data, err := json.Marshal(objectToStore)
 	if err != nil {
-		return errors.Wrap(err, setInterfaceErr)
+		return errors.Wrapf(err, setInterfaceErr+" Key: %s", key)
 	}
 	return m.SetBytes(key, data)
 }
@@ -72,7 +72,7 @@ func (m *Memstore) GetInterface(key string, objectToLoad interface{}) error {
 
 	err = json.Unmarshal(data, objectToLoad)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "Key %s", key)
 	}
 	return nil
 }
@@ -91,7 +91,8 @@ func (m *Memstore) GetBytes(key string) ([]byte, error) {
 	defer m.mux.Unlock()
 	data, ok := m.store[key]
 	if !ok {
-		return nil, errors.New(objectNotFoundErr)
+		return nil, errors.Wrapf(errors.New(objectNotFoundErr),
+			"Key %s", key)
 	}
 
 	return data, nil
@@ -107,7 +108,7 @@ func (m *Memstore) Transaction(key string, op TransactionOperation) (
 	var newData []byte
 	newData, err = op(old, existed)
 	if err != nil {
-		return nil, existed, err
+		return nil, existed, errors.Wrapf(err, "Key: %s", key)
 	}
 
 	m.store[key] = newData

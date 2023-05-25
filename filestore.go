@@ -114,7 +114,7 @@ func (f *Filestore) Get(key string, loadIntoThisObject Unmarshaler) error {
 	if err == nil {
 		err = loadIntoThisObject.Unmarshal(decryptedContents)
 	}
-	return errors.WithStack(err)
+	return err
 }
 
 // Delete the value for the given key per [KeyValue.Delete]
@@ -131,8 +131,11 @@ func (f *Filestore) SetInterface(key string, objectToStore interface{}) error {
 	data, err := json.Marshal(objectToStore)
 	if err == nil {
 		err = f.SetBytes(key, data)
+		if err != nil {
+			err = errors.Wrapf(err, "Key %s", key)
+		}
 	}
-	return errors.WithStack(err)
+	return err
 }
 
 // GetInterface uses json to encode and get data per [KeyValue.GetInterface]
@@ -140,8 +143,11 @@ func (f *Filestore) GetInterface(key string, v interface{}) error {
 	data, err := f.GetBytes(key)
 	if err == nil {
 		err = json.Unmarshal(data, v)
+		if err != nil {
+			err = errors.Wrapf(err, "Key %s", key)
+		}
 	}
-	return errors.WithStack(err)
+	return err
 }
 
 // Internal helper functions
@@ -180,7 +186,7 @@ func (f *Filestore) GetBytes(key string) ([]byte, error) {
 	if err == nil {
 		decryptedContents, err = decrypt(encryptedContents, f.password)
 	}
-	return decryptedContents, errors.WithStack(err)
+	return decryptedContents, errors.Wrapf(err, "Key %s", key)
 }
 
 // SetBytes implements [KeyValue.SetBytes]
@@ -194,7 +200,7 @@ func (f *Filestore) SetBytes(key string, data []byte) error {
 
 	err := write(encryptedKey, encryptedContents)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "Key %s", key)
 	}
 	return nil
 }
@@ -216,14 +222,16 @@ func (f *Filestore) Transaction(key string, op TransactionOperation) (
 		if !Exists(err) {
 			hasfile = false
 		} else {
-			return nil, false, err
+			return nil, false, errors.Wrapf(err, "Key %s", key)
+
 		}
 	}
 	var decryptedContents []byte
 	if hasfile {
 		decryptedContents, err = decrypt(encryptedContents, f.password)
 		if err != nil {
-			return nil, true, err
+			return nil, true, errors.Wrapf(err, "Key %s", key)
+
 		}
 	}
 
@@ -236,9 +244,10 @@ func (f *Filestore) Transaction(key string, op TransactionOperation) (
 
 	err = write(encryptedKey, encryptedNewContents)
 	if err != nil {
-		return decryptedContents, hasfile, errors.WithStack(err)
+		return decryptedContents, hasfile,
+			errors.Wrapf(err, "Key %s", key)
 	}
-	return decryptedContents, hasfile, err
+	return decryptedContents, hasfile, nil
 }
 
 func (f *Filestore) getKey(key string) string {
