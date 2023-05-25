@@ -100,6 +100,8 @@ func (m *Memstore) GetBytes(key string) ([]byte, error) {
 
 // Transaction implements [KeyValue.Transaction]
 func (m *Memstore) Transaction(op TransactionOperation, keys ...string) error {
+	m.mux.Lock()
+	defer m.mux.Unlock()
 	e := &extendableMem{
 		closed: false,
 		mem:    m,
@@ -142,9 +144,6 @@ func (e *extendableMem) Extend(keys []string) (map[string]Operable, error) {
 		}
 	}
 
-	// get the locks
-	e.mem.mux.Lock()
-
 	// read the keys
 	for _, oper := range operables {
 		operInternal := oper.(*operableMem)
@@ -173,7 +172,6 @@ func (e *extendableMem) flush() {
 
 func (e *extendableMem) close() {
 	e.closed = true
-	e.mem.mux.Unlock()
 }
 
 type operableMem struct {
