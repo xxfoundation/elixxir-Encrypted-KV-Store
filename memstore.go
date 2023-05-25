@@ -221,7 +221,6 @@ func (op *operableMem) Flush() error {
 	op.testClosed("Flush()")
 	defer func() {
 		op.closed = true
-		op.mem.mux.Unlock()
 	}()
 	switch op.op {
 	case readOp:
