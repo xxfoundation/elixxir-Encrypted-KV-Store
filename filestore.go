@@ -321,7 +321,9 @@ func (f *Filestore) MutualTransaction(keys []string,
 			toWrite := encrypt(v.Data, f.password, f.csprng)
 			err = write(encryptedKeys[key], toWrite)
 			if err != nil {
-				jww.FATAL.Panicf("Failed to write key %s to disk: %+v")
+				jww.FATAL.Panicf(
+					"Failed to write key %s to disk: %+v",
+					key, err)
 			}
 		} else {
 			deletions = append(deletions, key)
