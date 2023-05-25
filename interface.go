@@ -52,9 +52,24 @@ type KeyValue interface {
 	// If the op returns an error, the operation will be aborted.
 	Transaction(key string, op TransactionOperation) (old []byte, existed bool,
 		err error)
+	// MutualTransaction locks all keys while operating, getting the initial values
+	// for all keys, passing them into the MutualTransactionOperation, writing
+	// the resulting values for all keys to disk, and returns the initial value
+	// the return value is the same as is sent to the op, if it is edited they
+	// will reflect in the returned old dataset
+	MutualTransaction(keys []string, op MutualTransactionOperation) (
+		old, written map[string]Value, err error)
 }
 
-type TransactionOperation func(old []byte, existed bool) (data []byte, err error)
+type TransactionOperation func(old []byte, existed bool) (data []byte,
+	delete bool, err error)
+type MutualTransactionOperation func(map[string]Value) (
+	updates map[string]Value, err error)
+
+type Value struct {
+	Data   []byte
+	Exists bool
+}
 
 // Exists determines if the error message is known to report the key does not
 // exist. Returns true if the error does not specify or it is nil and false

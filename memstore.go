@@ -106,12 +106,47 @@ func (m *Memstore) Transaction(key string, op TransactionOperation) (
 	old, existed = m.store[key]
 
 	var newData []byte
-	newData, err = op(old, existed)
+	var deletion bool
+	newData, deletion, err = op(old, existed)
 	if err != nil {
 		return nil, existed, errors.Wrapf(err, "Key: %s", key)
 	}
-
-	m.store[key] = newData
+	if deletion {
+		delete(m.store, key)
+	} else {
+		m.store[key] = newData
+	}
 
 	return old, existed, nil
+}
+
+func (m *Memstore) MutualTransaction(keys []string,
+	op MutualTransactionOperation) (map[string]Value, map[string]Value, error) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+
+	//load data
+	oldContents := make(map[string]Value, len(keys))
+	for _, key := range keys {
+		v := Value{}
+		v.Data, v.Exists = m.store[key]
+		oldContents[key] = v
+	}
+
+	//run ops
+	data, err := op(oldContents)
+	if err != nil {
+		return oldContents, nil, err
+	}
+
+	//write
+	for key, v := range data {
+		if v.Exists {
+			m.store[key] = v.Data
+		} else {
+			delete(m.store, key)
+		}
+	}
+
+	return oldContents, data, nil
 }

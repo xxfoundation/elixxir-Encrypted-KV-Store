@@ -127,11 +127,11 @@ func TestMemstore_Transaction(t *testing.T) {
 	for i := 0; i < numParalell; i++ {
 		wg.Add(1)
 		go func(index int) {
-			op := func(old []byte, existed bool) (data []byte, err2 error) {
+			op := func(old []byte, existed bool) (data []byte, deletion bool, err2 error) {
 				localL := unmarshal(old)
 				localL[index] = index
 				newData := marshal(localL)
-				return newData, nil
+				return newData, false, nil
 			}
 			_, exist, localErr := f.Transaction(key, op)
 			require.NoErrorf(t, localErr, "Transaction failed on index %s",
