@@ -17,7 +17,12 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/ekv/portableOS"
+)
+
+const (
+	kvDebugHeader = "[KV FILE DEBUG]"
 )
 
 // Filestore implements an ekv by reading and writing to files in a
@@ -123,6 +128,8 @@ func (f *Filestore) Delete(key string) error {
 	lck := f.getLock(encryptedKey)
 	lck.Lock()
 	defer lck.Unlock()
+	jww.TRACE.Printf("%s,DELETE,%s,%s", kvDebugHeader, key, encryptedKey)
+
 	return deleteFiles(encryptedKey, f.csprng)
 }
 
@@ -187,7 +194,8 @@ func (f *Filestore) GetBytes(key string) ([]byte, error) {
 func (f *Filestore) SetBytes(key string, data []byte) error {
 	encryptedKey := f.getKey(key)
 	encryptedContents := encrypt(data, f.password, f.csprng)
-
+	jww.TRACE.Printf(
+		"%s,SET,%s,%s,%s", kvDebugHeader, key, encryptedKey, data)
 	lck := f.getLock(encryptedKey)
 	lck.Lock()
 	defer lck.Unlock()
@@ -233,6 +241,9 @@ func (f *Filestore) Transaction(key string, op TransactionOperation) (
 	}
 
 	encryptedNewContents := encrypt(data, f.password, f.csprng)
+
+	jww.TRACE.Printf(
+		"%s,TRANSACTION,%s,%s,%s", kvDebugHeader, key, encryptedKey, data)
 
 	err = write(encryptedKey, encryptedNewContents)
 	if err != nil {
