@@ -12,19 +12,21 @@ package portableOS
 import (
 	"bytes"
 	"sync"
+
+	"gitlab.com/elixxir/wasm-utils/storage"
 )
 
 // jsFile represents a File for a Javascript value saved in local storage.
 type jsFile struct {
 	keyName string
 	reader  *bytes.Reader
-	storage *jsStore
+	storage storage.LocalStorage
 	dirty   bool // Is true when data on disk is different from in memory
 	mux     sync.Mutex
 }
 
 // open creates a new in-memory file buffer of the key value.
-func open(keyName, keyValue string, storage *jsStore) *jsFile {
+func open(keyName, keyValue string, storage storage.LocalStorage) *jsFile {
 	f := &jsFile{
 		keyName: keyName,
 		reader:  bytes.NewReader([]byte(keyValue)),
@@ -60,7 +62,7 @@ func (f *jsFile) Read(b []byte) (n int, err error) {
 	defer f.mux.Unlock()
 
 	if f.dirty {
-		keyValue, err := f.storage.getItem(f.keyName)
+		keyValue, err := f.storage.Get(f.keyName)
 		if err != nil {
 			return 0, err
 		}
@@ -81,7 +83,7 @@ func (f *jsFile) ReadAt(b []byte, off int64) (n int, err error) {
 	defer f.mux.Unlock()
 
 	if f.dirty {
-		keyValue, err := f.storage.getItem(f.keyName)
+		keyValue, err := f.storage.Get(f.keyName)
 		if err != nil {
 			return 0, err
 		}
@@ -107,7 +109,7 @@ func (f *jsFile) Seek(offset int64, whence int) (ret int64, err error) {
 	defer f.mux.Unlock()
 
 	if f.dirty {
-		keyValue, err := f.storage.getItem(f.keyName)
+		keyValue, err := f.storage.Get(f.keyName)
 		if err != nil {
 			return 0, err
 		}
@@ -126,7 +128,7 @@ func (f *jsFile) Sync() error {
 	f.mux.Lock()
 	defer f.mux.Unlock()
 
-	keyValue, err := f.storage.getItem(f.keyName)
+	keyValue, err := f.storage.Get(f.keyName)
 	if err != nil {
 		return err
 	}
@@ -146,14 +148,17 @@ func (f *jsFile) Write(b []byte) (n int, err error) {
 
 	f.dirty = true
 
-	keyValue, err := f.storage.getItem(f.keyName)
+	keyValue, err := f.storage.Get(f.keyName)
 	if err != nil {
 		return 0, err
 	}
 
 	keyValue = append(keyValue, b...)
 
-	f.storage.setItem(f.keyName, keyValue)
+	err = f.storage.Set(f.keyName, keyValue)
+	if err != nil {
+		return 0, err
+	}
 
 	return len(b), nil
 }
