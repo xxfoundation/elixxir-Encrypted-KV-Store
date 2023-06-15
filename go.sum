@@ -1,3 +1,4 @@
+github.com/Max-Sum/base32768 v0.0.0-20230304063302-18e6ce5945fd h1:nzE1YQBdx1bq9IlZinHa+HVffy+NmVRoKr+wHN8fpLE=
 github.com/Max-Sum/base32768 v0.0.0-20230304063302-18e6ce5945fd/go.mod h1:C8yoIfvESpM3GD07OCHU7fqI7lhwyZ2Td1rbNbTAhnc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
@@ -16,8 +17,6 @@ github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.2 h1:+h33VjcLVPDHtOdpUCuF+7gSuG3yGIftsP1YvFihtJ8=
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
-gitlab.com/elixxir/wasm-utils v0.0.0-20230522231408-a43b2c1481b2 h1:GQb350yPBkWRkPRgNSVFF0ZZDOAlXWIKQBI/1Ff6biU=
-gitlab.com/elixxir/wasm-utils v0.0.0-20230522231408-a43b2c1481b2/go.mod h1:wB7Vh/7LWUm8wYRBSd+6lxfpk4CnDaHTkLCIVKfL2TA=
 gitlab.com/elixxir/wasm-utils v0.0.0-20230608180705-3099f411611c h1:JOEgEAIkCEPZ8NNXLyDc/3TirmAzsjlN+ACHBB3YS+8=
 gitlab.com/elixxir/wasm-utils v0.0.0-20230608180705-3099f411611c/go.mod h1:wB7Vh/7LWUm8wYRBSd+6lxfpk4CnDaHTkLCIVKfL2TA=
 golang.org/x/crypto v0.0.0-20220518034528-6f7dac969898 h1:SLP7Q4Di66FONjDJbCYrCRrh97focO6sLogHO7/g8F0=
