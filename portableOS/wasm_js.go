@@ -10,35 +10,39 @@
 package portableOS
 
 import (
+	"gitlab.com/elixxir/wasm-utils/storage"
 	"strings"
 )
+
+// Wrapper for Javascript localStorage.
+var localStorage = storage.GetLocalStorage()
 
 // Open opens the named file for reading. If successful, methods on the returned
 // file can be used for reading.
 var Open = func(name string) (File, error) {
-	keyValue, err := jsStorage.Get(name)
+	keyValue, err := localStorage.Get(name)
 	if err != nil {
 		return nil, err
 	}
 
-	return open(name, string(keyValue), jsStorage), nil
+	return open(name, string(keyValue), localStorage), nil
 }
 
 // Create creates or truncates the named file. If the file already exists, it is
 // truncated. If the file does not exist, it is created. If successful, methods
 // on the returned File can be used for I/O.
 var Create = func(name string) (File, error) {
-	err := jsStorage.Set(name, []byte(""))
+	err := localStorage.Set(name, []byte(""))
 	if err != nil {
 		return nil, err
 	}
 
-	return open(name, "", jsStorage), nil
+	return open(name, "", localStorage), nil
 }
 
 // Remove removes the named file or directory.
 var Remove = func(name string) error {
-	jsStorage.RemoveItem(name)
+	localStorage.RemoveItem(name)
 	return nil
 }
 
@@ -48,14 +52,14 @@ var Remove = func(name string) error {
 // returns nil (no error).
 // If there is an error, it will be of type *PathError.
 var RemoveAll = func(path string) error {
-	for i := 0; i < jsStorage.Length(); i++ {
-		keyName, err := jsStorage.Key(i)
+	for i := 0; i < localStorage.Length(); i++ {
+		keyName, err := localStorage.Key(i)
 		if err != nil {
 			return err
 		}
 
 		if strings.HasPrefix(keyName, path) {
-			jsStorage.RemoveItem(keyName)
+			localStorage.RemoveItem(keyName)
 		}
 	}
 
@@ -67,17 +71,17 @@ var RemoveAll = func(path string) error {
 // umask) are used for all directories that MkdirAll creates. If path is already
 // a directory, MkdirAll does nothing and returns nil.
 var MkdirAll = func(path string, perm FileMode) error {
-	err := jsStorage.Set(path, []byte(""))
+	err := localStorage.Set(path, []byte(""))
 	if err != nil {
 		return err
 	}
-	open(path, "", jsStorage)
+	open(path, "", localStorage)
 	return nil
 }
 
 // Stat returns a FileInfo describing the named file.
 var Stat = func(name string) (FileInfo, error) {
-	keyValue, err := jsStorage.Get(name)
+	keyValue, err := localStorage.Get(name)
 	if err != nil {
 		return nil, err
 	}
