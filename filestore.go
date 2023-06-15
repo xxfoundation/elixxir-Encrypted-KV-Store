@@ -21,6 +21,10 @@ import (
 	"gitlab.com/elixxir/ekv/portableOS"
 )
 
+const (
+	kvDebugHeader = "[KV FILE DEBUG]"
+)
+
 // Filestore implements an ekv by reading and writing to files in a
 // directory.
 type Filestore struct {
@@ -123,6 +127,7 @@ func (f *Filestore) Delete(key string) error {
 	encryptedKey := f.getKey(key)
 	unlock := f.takeWriteLock(encryptedKey)
 	defer unlock()
+	jww.TRACE.Printf("%s,DELETE,%s,%s", kvDebugHeader, key, encryptedKey)
 	return deleteFiles(encryptedKey, f.csprng)
 }
 
@@ -163,7 +168,8 @@ func (f *Filestore) GetBytes(key string) ([]byte, error) {
 func (f *Filestore) SetBytes(key string, data []byte) error {
 	encryptedKey := f.getKey(key)
 	encryptedContents := encrypt(data, f.password, f.csprng)
-
+	jww.TRACE.Printf(
+		"%s,SET,%s,%s,%s", kvDebugHeader, key, encryptedKey, data)
 	unlock := f.takeWriteLock(encryptedKey)
 	defer unlock()
 
@@ -184,6 +190,9 @@ func (f *Filestore) Transaction(op TransactionOperation, keys ...string) error {
 	if err != nil {
 		return err
 	}
+
+	jww.TRACE.Printf(
+		"%s,TRANSACTION,%s,%s,%s", kvDebugHeader, key, encryptedKey, data)
 
 	//do the operations
 	err = op(operables, e)

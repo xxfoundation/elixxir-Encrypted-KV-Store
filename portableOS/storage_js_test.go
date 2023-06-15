@@ -31,9 +31,9 @@ func Test_jsStore_getItem_setItem(t *testing.T) {
 	}
 
 	for keyName, keyValue := range values {
-		jsStorage.setItem(keyName, keyValue)
+		jsStorage.Set(keyName, keyValue)
 
-		loadedValue, err := jsStorage.getItem(keyName)
+		loadedValue, err := jsStorage.Get(keyName)
 		if err != nil {
 			t.Errorf("Failed to load %q: %+v", keyName, err)
 		}
@@ -48,7 +48,7 @@ func Test_jsStore_getItem_setItem(t *testing.T) {
 // Tests that jsStore.getItem returns the error os.ErrNotExist when the key does
 // not exist in storage.
 func Test_jsStore_getItem_NotExistError(t *testing.T) {
-	_, err := jsStorage.getItem("someKey")
+	_, err := jsStorage.Get("someKey")
 	if err == nil || !strings.Contains(err.Error(), os.ErrNotExist.Error()) {
 		t.Errorf("Incorrect error for non existant key."+
 			"\nexpected: %v\nreceived: %v", os.ErrNotExist, err)
@@ -59,10 +59,10 @@ func Test_jsStore_getItem_NotExistError(t *testing.T) {
 // retrieved.
 func Test_jsStore_removeItem(t *testing.T) {
 	keyName := "key"
-	jsStorage.setItem(keyName, []byte("value"))
-	jsStorage.removeItem(keyName)
+	jsStorage.Set(keyName, []byte("value"))
+	jsStorage.RemoveItem(keyName)
 
-	_, err := jsStorage.getItem(keyName)
+	_, err := jsStorage.Get(keyName)
 	if err == nil || !strings.Contains(err.Error(), os.ErrNotExist.Error()) {
 		t.Errorf("Failed to remove %q: %+v", keyName, err)
 	}
@@ -71,7 +71,8 @@ func Test_jsStore_removeItem(t *testing.T) {
 // Tests that jsStore.key return all added keys when looping through all
 // indexes.
 func Test_jsStore_key(t *testing.T) {
-	jsStorage.Call("clear")
+
+	jsStorage.LocalStorageUNSAFE().Call("clear")
 	values := map[string][]byte{
 		"key1": []byte("key value"),
 		"key2": {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
@@ -79,12 +80,12 @@ func Test_jsStore_key(t *testing.T) {
 	}
 
 	for keyName, keyValue := range values {
-		jsStorage.setItem(keyName, keyValue)
+		jsStorage.Set(keyName, keyValue)
 	}
 
 	numKeys := len(values)
 	for i := 0; i < numKeys; i++ {
-		keyName, err := jsStorage.key(i)
+		keyName, err := jsStorage.Key(i)
 		if err != nil {
 			t.Errorf("No key found for index %d: %+v", i, err)
 		}
@@ -103,16 +104,16 @@ func Test_jsStore_key(t *testing.T) {
 // Tests that jsStore.key returns the error os.ErrNotExist when the index is
 // greater than or equal to the number of keys.
 func Test_jsStore_key_NotExistError(t *testing.T) {
-	jsStorage.Call("clear")
-	jsStorage.setItem("key", []byte("value"))
+	jsStorage.LocalStorageUNSAFE().Call("clear")
+	jsStorage.Set("key", []byte("value"))
 
-	_, err := jsStorage.key(1)
+	_, err := jsStorage.Key(1)
 	if err == nil || !strings.Contains(err.Error(), os.ErrNotExist.Error()) {
 		t.Errorf("Incorrect error for non existant key index."+
 			"\nexpected: %v\nreceived: %v", os.ErrNotExist, err)
 	}
 
-	_, err = jsStorage.key(2)
+	_, err = jsStorage.Key(2)
 	if err == nil || !strings.Contains(err.Error(), os.ErrNotExist.Error()) {
 		t.Errorf("Incorrect error for non existant key index."+
 			"\nexpected: %v\nreceived: %v", os.ErrNotExist, err)
@@ -122,7 +123,7 @@ func Test_jsStore_key_NotExistError(t *testing.T) {
 // Tests that jsStore.length returns the correct length when adding and removing
 // various keys.
 func Test_jsStore_length(t *testing.T) {
-	jsStorage.Call("clear")
+	jsStorage.LocalStorageUNSAFE().Call("clear")
 	values := map[string][]byte{
 		"key1": []byte("key value"),
 		"key2": {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
@@ -131,23 +132,23 @@ func Test_jsStore_length(t *testing.T) {
 
 	i := 0
 	for keyName, keyValue := range values {
-		jsStorage.setItem(keyName, keyValue)
+		jsStorage.Set(keyName, keyValue)
 		i++
 
-		if jsStorage.length() != i {
+		if jsStorage.Length() != i {
 			t.Errorf("Incorrect length.\nexpected: %d\nreceived: %d",
-				i, jsStorage.length())
+				i, jsStorage.Length())
 		}
 	}
 
 	i = len(values)
 	for keyName := range values {
-		jsStorage.removeItem(keyName)
+		jsStorage.RemoveItem(keyName)
 		i--
 
-		if jsStorage.length() != i {
+		if jsStorage.Length() != i {
 			t.Errorf("Incorrect length.\nexpected: %d\nreceived: %d",
-				i, jsStorage.length())
+				i, jsStorage.Length())
 		}
 	}
 }
