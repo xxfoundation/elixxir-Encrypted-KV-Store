@@ -17,8 +17,8 @@ github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.2 h1:+h33VjcLVPDHtOdpUCuF+7gSuG3yGIftsP1YvFihtJ8=
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
-gitlab.com/elixxir/wasm-utils v0.0.0-20230608180705-3099f411611c h1:JOEgEAIkCEPZ8NNXLyDc/3TirmAzsjlN+ACHBB3YS+8=
-gitlab.com/elixxir/wasm-utils v0.0.0-20230608180705-3099f411611c/go.mod h1:wB7Vh/7LWUm8wYRBSd+6lxfpk4CnDaHTkLCIVKfL2TA=
+gitlab.com/elixxir/wasm-utils v0.0.0-20230615221232-f4a27fb031ab h1:oI2GIOxQ5WUgMviwEvdH4mjWrsB2HfGqKWs8QmHtfMw=
+gitlab.com/elixxir/wasm-utils v0.0.0-20230615221232-f4a27fb031ab/go.mod h1:wB7Vh/7LWUm8wYRBSd+6lxfpk4CnDaHTkLCIVKfL2TA=
 golang.org/x/crypto v0.0.0-20220518034528-6f7dac969898 h1:SLP7Q4Di66FONjDJbCYrCRrh97focO6sLogHO7/g8F0=
 golang.org/x/crypto v0.0.0-20220518034528-6f7dac969898/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
 golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
