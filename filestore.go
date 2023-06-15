@@ -191,10 +191,10 @@ func (f *Filestore) Transaction(op TransactionOperation, keys ...string) error {
 		return err
 	}
 
-	jww.TRACE.Printf(
-		"%s,TRANSACTION,%s,%s,%s", kvDebugHeader, key, encryptedKey, data)
+	// jww.TRACE.Printf(
+	// 	"%s,TRANSACTION,%s,%s,%s", kvDebugHeader, key, encryptedKey, data)
 
-	//do the operations
+	// do the operations
 	err = op(operables, e)
 	if err != nil {
 		return err
