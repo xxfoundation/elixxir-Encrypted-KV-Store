@@ -10,7 +10,6 @@ package ekv
 import (
 	"bytes"
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"io"
 	"os"
@@ -468,6 +467,6 @@ const (
 
 func (f *Filestore) getKey(key string) string {
 	encryptedKey := hashStringWithPassword(key, f.password)
-	encryptedKeyStr := hex.EncodeToString(encryptedKey)
+	encryptedKeyStr := encodeKey(encryptedKey)
 	return f.basedir + string(os.PathSeparator) + encryptedKeyStr
 }
