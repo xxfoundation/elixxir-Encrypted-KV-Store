@@ -9,8 +9,6 @@ package ekv
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
-	"sync"
 	"testing"
 )
 
@@ -106,48 +104,4 @@ func TestMemstore_Multiset(t *testing.T) {
 				expStr)
 		}
 	}
-}
-
-func TestMemstore_Transaction(t *testing.T) {
-	numParalell := 100
-	l := make([]int, numParalell)
-
-	f := MakeMemstore()
-
-	key := "test"
-
-	if err := f.SetBytes(key, marshal(l)); err != nil {
-		t.Fatalf("failed to set initial state: %+v", err)
-	}
-
-	expectedL := make([]int, numParalell)
-
-	wg := sync.WaitGroup{}
-
-	for i := 0; i < numParalell; i++ {
-		wg.Add(1)
-		go func(index int) {
-			op := func(old []byte, existed bool) (data []byte, err2 error) {
-				localL := unmarshal(old)
-				localL[index] = index
-				newData := marshal(localL)
-				return newData, nil
-			}
-			_, exist, localErr := f.Transaction(key, op)
-			require.NoErrorf(t, localErr, "Transaction failed on index %s",
-				index)
-			require.Equal(t, exist, true, "entree did not "+
-				"exist")
-			wg.Done()
-		}(i)
-		expectedL[i] = i
-	}
-
-	wg.Wait()
-
-	finalData, err := f.GetBytes(key)
-	require.NoErrorf(t, err, "Final get errored")
-	finalL := unmarshal(finalData)
-
-	require.Equal(t, expectedL, finalL, "Writes were not sequential")
 }

@@ -5,18 +5,16 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
-// This file is only compiled for WebAssembly.
+// This file is compiled for all architectures except WebAssembly.
+//go:build !js || !wasm
 
-package portableOS
+package ekv
 
 import (
-	"gitlab.com/elixxir/wasm-utils/storage"
+	"encoding/hex"
 )
 
-// Defines storage used by Javascript as window.localStorage.
-//
-//   - Specification:
-//     https://html.spec.whatwg.org/multipage/webstorage.html#dom-localstorage-dev
-//   - Documentation:
-//     https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
-var jsStorage = storage.GetLocalStorage()
+// encodeKey encodes a Filestore key using hex encoding.
+func encodeKey(key []byte) string {
+	return hex.EncodeToString(key)
+}

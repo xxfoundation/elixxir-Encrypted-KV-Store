@@ -11,14 +11,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 	"gitlab.com/elixxir/ekv/portableOS"
 	"io/ioutil"
 	"math"
 	"os"
 	"runtime"
 	"runtime/debug"
-	"sync"
 	"testing"
 	"time"
 )
@@ -52,10 +50,11 @@ func (s *BrokenMarshalable) Unmarshal(d []byte) error {
 
 // TestFilestore_Smoke runs a basic read/write on the current directory
 func TestFilestore_Smoke(t *testing.T) {
-	err := portableOS.RemoveAll(".ekv_testdir")
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	defer func() {
+		if err := portableOS.RemoveAll(".ekv_testdir"); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	f, err := NewFilestore(".ekv_testdir", "Hello, World!")
 	if err != nil {
@@ -101,10 +100,11 @@ func TestFilestore_Smoke(t *testing.T) {
 
 // TestFilestore_Broken tries to marshal with a broken object
 func TestFilestore_Broken(t *testing.T) {
-	err := portableOS.RemoveAll(".ekv_testdir_broken")
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	defer func() {
+		if err := portableOS.RemoveAll(".ekv_testdir_broken"); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	f, err := NewFilestore(".ekv_testdir_broken", "Hello, World 22!")
 	if err != nil {
@@ -130,10 +130,11 @@ func TestFilestore_Broken(t *testing.T) {
 // the right result each time (exercises the internal monotonic counter
 // functionality)
 func TestFilestore_Multiset(t *testing.T) {
-	err := portableOS.RemoveAll(".ekv_testdir_multiset")
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	defer func() {
+		if err := portableOS.RemoveAll(".ekv_testdir_multiset"); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	f, err := NewFilestore(".ekv_testdir_multiset", "Hello, World!")
 	if err != nil {
@@ -178,10 +179,11 @@ func TestFilestore_Multiset(t *testing.T) {
 // TestFilestore_Reopen verifies we can recreate/reopen the store and get the
 // data we stored back out.
 func TestFilestore_Reopen(t *testing.T) {
-	err := portableOS.RemoveAll(".ekv_testdir_reopen")
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	defer func() {
+		if err := portableOS.RemoveAll(".ekv_testdir_reopen"); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	f, err := NewFilestore(".ekv_testdir_reopen", "Hello, World!")
 	if err != nil {
@@ -248,12 +250,13 @@ func TestFilestore_Reopen(t *testing.T) {
 
 // TestFilestore_BadPass confirms using a bad password nets an error
 func TestFilestore_BadPass(t *testing.T) {
-	err := portableOS.RemoveAll(".ekv_testdir_badpass")
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	defer func() {
+		if err := portableOS.RemoveAll(".ekv_testdir_badpass"); err != nil {
+			t.Error(err)
+		}
+	}()
 
-	_, err = NewFilestore(".ekv_testdir_badpass", "Hello, World!")
+	_, err := NewFilestore(".ekv_testdir_badpass", "Hello, World!")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -385,112 +388,6 @@ func TestFilestore_FDCount(t *testing.T) {
 
 	debug.SetGCPercent(100)
 
-}
-
-// TestFilestore_Transaction runs 100 transactions in parallel that edit the same
-// list stored to a single key. If operations are not sequential, a write will be
-// written based on a read that didnt include a write that occurred after the
-// writer's read, dropping the first writers data.
-func TestFilestore_Transaction(t *testing.T) {
-	numParalell := 100
-	l := make([]int, numParalell)
-
-	err := portableOS.RemoveAll(".ekv_testdir")
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	f, err := NewFilestore(".ekv_testdir", "Hello, World!")
-	if err != nil {
-		t.Errorf("%+v", err)
-	}
-
-	key := "test"
-
-	if err := f.SetBytes(key, marshal(l)); err != nil {
-		t.Fatalf("failed to set initial state: %+v", err)
-	}
-
-	expectedL := make([]int, numParalell)
-
-	wg := sync.WaitGroup{}
-
-	for i := 0; i < numParalell; i++ {
-		wg.Add(1)
-		go func(index int) {
-			op := func(old []byte, existed bool) (data []byte, err2 error) {
-				localL := unmarshal(old)
-				localL[index] = index
-				newData := marshal(localL)
-				return newData, nil
-			}
-			_, exist, localErr := f.Transaction(key, op)
-			require.NoErrorf(t, localErr, "Transaction failed on index %s",
-				index)
-			require.Equal(t, exist, true, "entree did not "+
-				"exist")
-			wg.Done()
-		}(i)
-		expectedL[i] = i
-	}
-
-	wg.Wait()
-
-	finalData, err := f.GetBytes(key)
-	require.NoErrorf(t, err, "Final get errored")
-	finalL := unmarshal(finalData)
-
-	require.Equal(t, expectedL, finalL, "Writes were not sequential")
-}
-
-func TestFilestore_Transaction_keyDoesntExist(t *testing.T) {
-	numParalell := 100
-
-	err := portableOS.RemoveAll(".ekv_testdir")
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	f, err := NewFilestore(".ekv_testdir", "Hello, World!")
-	if err != nil {
-		t.Errorf("%+v", err)
-	}
-
-	key := "test"
-
-	expectedL := make([]int, numParalell)
-
-	wg := sync.WaitGroup{}
-
-	for i := 0; i < numParalell; i++ {
-		wg.Add(1)
-		go func(index int) {
-			op := func(old []byte, existed bool) (data []byte, err2 error) {
-				var localL []int
-				if !existed {
-					localL = make([]int, numParalell)
-				} else {
-					localL = unmarshal(old)
-				}
-				localL[index] = index
-				newData := marshal(localL)
-				return newData, nil
-			}
-			_, _, localErr := f.Transaction(key, op)
-			require.NoErrorf(t, localErr, "Transaction failed on index %s",
-				index)
-			wg.Done()
-		}(i)
-		expectedL[i] = i
-	}
-
-	wg.Wait()
-
-	finalData, err := f.GetBytes(key)
-	require.NoErrorf(t, err, "Final get errored")
-	finalL := unmarshal(finalData)
-
-	require.Equal(t, expectedL, finalL, "Writes were not sequential")
 }
 
 func marshal(l []int) []byte {

@@ -11,21 +11,22 @@ package portableOS
 
 import (
 	"bytes"
-	"gitlab.com/elixxir/wasm-utils/storage"
 	"sync"
+
+	"gitlab.com/elixxir/wasm-utils/storage"
 )
 
 // jsFile represents a File for a Javascript value saved in local storage.
 type jsFile struct {
 	keyName string
 	reader  *bytes.Reader
-	storage *storage.LocalStorage
+	storage storage.LocalStorage
 	dirty   bool // Is true when data on disk is different from in memory
 	mux     sync.Mutex
 }
 
 // open creates a new in-memory file buffer of the key value.
-func open(keyName, keyValue string, storage *storage.LocalStorage) *jsFile {
+func open(keyName, keyValue string, storage storage.LocalStorage) *jsFile {
 	f := &jsFile{
 		keyName: keyName,
 		reader:  bytes.NewReader([]byte(keyValue)),
