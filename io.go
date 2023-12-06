@@ -335,7 +335,7 @@ func write(path string, data []byte) error {
 	csumEnd := csumStart + blake2b.Size256
 	copy(contents[csumStart:csumEnd], checksum[:])
 
-	fileToWrite, err = createFile(filePathToWrite)
+	fileToWrite, err := createFile(filePathToWrite)
 	// Error out if we failed to create
 	if err != nil {
 		return err
