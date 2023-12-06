@@ -29,12 +29,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/pkg/errors"
-	"gitlab.com/elixxir/ekv/portableOS"
-	"golang.org/x/crypto/blake2b"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
+	"gitlab.com/elixxir/ekv/portableOS"
+	"golang.org/x/crypto/blake2b"
 )
 
 const (
@@ -203,6 +204,9 @@ func createFile(path string) (portableOS.File, error) {
 	// Open directory and flush it
 	dirname := filepath.Dir(path)
 	d, err := portableOS.Open(dirname)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 	d.Sync()
 	d.Close()
 
@@ -270,7 +274,7 @@ func write(path string, data []byte) error {
 	}
 	// First, check if either file can be read. Then write to the other one
 	path1, path2 := getPaths(path)
-	newest, oldest, err := getFileOrder(path1, path2)
+	newest, oldest, _ := getFileOrder(path1, path2)
 	if newest != nil {
 		defer newest.Close()
 	}
