@@ -8,7 +8,6 @@
 package ekv
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -339,7 +338,7 @@ func TestFilestore_FDCount(t *testing.T) {
 		}(f, x)
 		// Kick off a read/write to the same key
 		go func(f *Filestore, x int) {
-			expStr := fmt.Sprintf("Hi!")
+			expStr := "Hi!"
 			i := &MarshalableString{
 				S: expStr,
 			}
@@ -389,21 +388,4 @@ func TestFilestore_FDCount(t *testing.T) {
 
 	debug.SetGCPercent(100)
 
-}
-
-func marshal(l []int) []byte {
-	b, err := json.Marshal(&l)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to marshal: %+v", err))
-	}
-	return b
-}
-
-func unmarshal(b []byte) []int {
-	var l []int
-	err := json.Unmarshal(b, &l)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to Unmarshal: %+v", err))
-	}
-	return l
 }
