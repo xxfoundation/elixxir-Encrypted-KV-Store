@@ -10,10 +10,11 @@
 //
 // Note to those implementing these functions: all function errors of certain
 // types must match the following errors
-//  "permission denied"
-//  "file already exists"
-//  "file does not exist"
-//  "file already closed"
+//
+//	"permission denied"
+//	"file already exists"
+//	"file does not exist"
+//	"file already closed"
 package portableOS
 
 // File represents an open file descriptor. It contains a subset of the methods
