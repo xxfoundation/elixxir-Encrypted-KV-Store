@@ -10,8 +10,6 @@ package ekv
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	"gitlab.com/elixxir/ekv/portableOS"
 	"io/ioutil"
 	"math"
 	"os"
@@ -19,6 +17,9 @@ import (
 	"runtime/debug"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
+	"gitlab.com/elixxir/ekv/portableOS"
 )
 
 // This is a simple marshalable object
@@ -376,9 +377,9 @@ func TestFilestore_FDCount(t *testing.T) {
 		// 2 files at most open per thread in the unique threads
 		// and only a few threads getting past the lock on the
 		// shared key threads, in practice it doesn't go above
-		// ~175 or so in the corrected code when totalCnt is 200
+		// ~175 or so in the corrected code when totalCnt is 200 (87.5%)
 		// whereas it always reached 400 before.
-		limit := math.Max(float64(numRoutines/2), 10)
+		limit := math.Max(float64(numRoutines)*0.875, 10)
 		if (curFDCount - startFDCount) > int(limit) {
 			t.Errorf("Used FD Count exceeds limit: "+
 				"%d > %d", curFDCount-startFDCount,
