@@ -17,7 +17,7 @@ import (
 
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/ekv/portableOS"
+	"gitlab.com/elixxir/ekv/portable"
 )
 
 const (
@@ -32,22 +32,50 @@ type Filestore struct {
 	sync.RWMutex
 	keyLocks map[string]*sync.RWMutex
 	csprng   io.Reader
+	storage  portable.Storage
 }
 
 // NewFilestore returns an initialized filestore object or an error
 // if it can't read and write to the directory/.ekv.1/2 file. Note that
 // this file is not used other than to verify read/write capabilities on the
-// directory.
+// directory. This uses the standard POSIX filesystem.
 func NewFilestore(basedir, password string) (*Filestore, error) {
 	return NewFilestoreWithNonceGenerator(basedir, password, rand.Reader)
 }
 
 // NewFilestoreWithNonceGenerator returns an initialized filestore object that
-// uses a custom RNG for Nonce generation.
+// uses a custom RNG for Nonce generation. This uses the standard POSIX filesystem.
 func NewFilestoreWithNonceGenerator(basedir, password string,
 	csprng io.Reader) (*Filestore, error) {
+	return NewGenericFilestoreWithNonceGenerator(portable.UsePosix(), basedir, password, csprng)
+}
+
+// NewKeyValueFilestore returns an initialized filestore backed by a
+// GenericKeyValue interface. This allows using any key-value store
+// (e.g., browser localStorage, IndexedDB) as the storage backend.
+func NewKeyValueFilestore(kv portable.GenericKeyValue, basedir, password string) (*Filestore, error) {
+	return NewKeyValueFilestoreWithNonceGenerator(kv, basedir, password, rand.Reader)
+}
+
+// NewKeyValueFilestoreWithNonceGenerator returns an initialized filestore
+// backed by a GenericKeyValue interface with a custom RNG for Nonce generation.
+func NewKeyValueFilestoreWithNonceGenerator(kv portable.GenericKeyValue, basedir, password string,
+	csprng io.Reader) (*Filestore, error) {
+	return NewGenericFilestoreWithNonceGenerator(portable.UseKeyValue(kv), basedir, password, csprng)
+}
+
+// NewGenericFilestore returns an initialized filestore backed by a
+// generic Storage interface.
+func NewGenericFilestore(storage portable.Storage, basedir, password string) (*Filestore, error) {
+	return NewGenericFilestoreWithNonceGenerator(storage, basedir, password, rand.Reader)
+}
+
+// NewGenericFilestoreWithNonceGenerator returns an initialized filestore
+// backed by a generic Storage interface with a custom RNG for Nonce generation.
+func NewGenericFilestoreWithNonceGenerator(storage portable.Storage, basedir, password string,
+	csprng io.Reader) (*Filestore, error) {
 	// Create the directory if it doesn't exist, otherwise do nothing.
-	err := portableOS.MkdirAll(basedir, 0700)
+	err := storage.MkdirAll(basedir, 0700)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -58,7 +86,7 @@ func NewFilestoreWithNonceGenerator(basedir, password string,
 
 	// Try to read the .ekv.1/2 file, if it exists then we check
 	// it's contents
-	ekvCiphertext, err := read(ekvPath)
+	ekvCiphertext, err := read(ekvPath, storage)
 	if !os.IsNotExist(err) {
 		if err != nil {
 			return nil, errors.WithStack(err)
@@ -78,7 +106,7 @@ func NewFilestoreWithNonceGenerator(basedir, password string,
 
 	// Now try to write the .ekv file which also reads and verifies what
 	// we write
-	err = write(ekvPath, encrypt(expectedContents, password, csprng))
+	err = write(ekvPath, encrypt(expectedContents, password, csprng), storage)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -88,6 +116,7 @@ func NewFilestoreWithNonceGenerator(basedir, password string,
 		password: password,
 		keyLocks: make(map[string]*sync.RWMutex),
 		csprng:   csprng,
+		storage:  storage,
 	}
 	return fs, nil
 }
@@ -127,7 +156,7 @@ func (f *Filestore) Delete(key string) error {
 	unlock := f.takeWriteLock(encryptedKey)
 	defer unlock()
 	jww.TRACE.Printf("%s,DELETE,%s,%s", kvDebugHeader, key, encryptedKey)
-	return deleteFiles(encryptedKey, f.csprng)
+	return deleteFiles(encryptedKey, f.csprng, f.storage)
 }
 
 // SetInterface uses json to encode and set data per [KeyValue.SetInterface]
@@ -153,7 +182,7 @@ func (f *Filestore) GetBytes(key string) ([]byte, error) {
 	encryptedKey := f.getKey(key)
 	unlock := f.takeReadLock(encryptedKey)
 
-	encryptedContents, err := read(encryptedKey)
+	encryptedContents, err := read(encryptedKey, f.storage)
 	unlock()
 
 	var decryptedContents []byte
@@ -172,7 +201,7 @@ func (f *Filestore) SetBytes(key string, data []byte) error {
 	unlock := f.takeWriteLock(encryptedKey)
 	defer unlock()
 
-	err := write(encryptedKey, encryptedContents)
+	err := write(encryptedKey, encryptedContents, f.storage)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -324,7 +353,7 @@ func (e *extendable) Extend(keys []string) (map[string]Operable, error) {
 	// read the keys
 	for _, oper := range operables {
 		operInternal := oper.(*operable)
-		encryptedContents, err := read(operInternal.ecrKey)
+		encryptedContents, err := read(operInternal.ecrKey, e.f.storage)
 		// if an error is received which is not the file is not found, return it
 		hasfile := true
 		if err != nil {
@@ -436,10 +465,10 @@ func (op *operable) Flush() error {
 		return nil
 	case writeOp:
 		encryptedNewContents := encrypt(op.data, op.f.password, op.f.csprng)
-		return write(op.ecrKey, encryptedNewContents)
+		return write(op.ecrKey, encryptedNewContents, op.f.storage)
 	case deleteOp:
 		if op.existed {
-			return deleteFiles(op.ecrKey, op.f.csprng)
+			return deleteFiles(op.ecrKey, op.f.csprng, op.f.storage)
 		}
 		return nil
 

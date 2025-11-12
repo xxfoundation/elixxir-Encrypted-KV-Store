@@ -34,7 +34,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	"gitlab.com/elixxir/ekv/portableOS"
+	"gitlab.com/elixxir/ekv/portable"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -86,7 +86,7 @@ func compareModMonCntr(t1, t2 byte) byte {
 // getFileOrder returns the newest and oldest files using the modular monotic
 // counter inside them. If either fails to read, the successful file is returned
 // if both fail to read, or return invalid results, return an error.
-func getFileOrder(path1, path2 string) (portableOS.File, portableOS.File, error) {
+func getFileOrder(path1, path2 string, storage portable.Storage) (portable.File, portable.File, error) {
 	// default to invalid values. The only valid modulo monotonic counter
 	// values are 0, 1, and 2.
 	t1 := byte(3)
@@ -95,14 +95,14 @@ func getFileOrder(path1, path2 string) (portableOS.File, portableOS.File, error)
 	buf := make([]byte, 1)
 
 	// Try to open and read file1
-	file1, err1 := portableOS.Open(path1)
+	file1, err1 := storage.Open(path1)
 	if err1 == nil {
 		buf[0] = 3
 		_, err1 = file1.ReadAt(buf, 0)
 		t1 = buf[0]
 	}
 	// Try to open and read file2
-	file2, err2 := portableOS.Open(path2)
+	file2, err2 := storage.Open(path2)
 	if err2 == nil {
 		buf[0] = 3
 		_, err2 = file2.ReadAt(buf, 0)
@@ -143,7 +143,7 @@ func getFileOrder(path1, path2 string) (portableOS.File, portableOS.File, error)
 // readContents of a file, checking the checksum and returning the data.
 // this function assumes the file read header is at the beginning of the content
 // block
-func readContents(f portableOS.File) ([]byte, error) {
+func readContents(f portable.File) ([]byte, error) {
 	// Read the contents size
 	sizeBytes := make([]byte, 4)
 	_, _ = f.Seek(1, 0)
@@ -192,9 +192,9 @@ func readContents(f portableOS.File) ([]byte, error) {
 
 // createFile creates the file, flushes the directory then returns an open,
 // writable file handle
-func createFile(path string) (portableOS.File, error) {
+func createFile(path string, storage portable.Storage) (portable.File, error) {
 	// Create file if is it is a "does not exist error"
-	f, err := portableOS.Create(path)
+	f, err := storage.Create(path)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -203,20 +203,20 @@ func createFile(path string) (portableOS.File, error) {
 
 	// Open directory and flush it
 	dirname := filepath.Dir(path)
-	d, err := portableOS.Open(dirname)
+	d, err := storage.Open(dirname)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	d.Sync()
 	d.Close()
 
-	return portableOS.Create(path)
+	return storage.Create(path)
 }
 
 // deleteFile overwrites a files contents with random data and then deletes
 // the file
-func deleteFile(path string, csprng io.Reader) error {
-	info, err := portableOS.Stat(path)
+func deleteFile(path string, csprng io.Reader, storage portable.Storage) error {
+	info, err := storage.Stat(path)
 	if os.IsNotExist(err) {
 		return nil
 	}
@@ -229,7 +229,7 @@ func deleteFile(path string, csprng io.Reader) error {
 	if _, err = io.ReadFull(csprng, buf); err != nil {
 		return err
 	}
-	f, err := portableOS.Create(path)
+	f, err := storage.Create(path)
 	if err != nil {
 		return err
 	}
@@ -239,19 +239,19 @@ func deleteFile(path string, csprng io.Reader) error {
 	}
 	f.Close()
 	f.Sync()
-	err = portableOS.Remove(path)
+	err = storage.Remove(path)
 	return err
 }
 
 // deleteFiles deletes both files and then flushes the directory
-func deleteFiles(path string, csprng io.Reader) error {
+func deleteFiles(path string, csprng io.Reader, storage portable.Storage) error {
 	// Create file if is it is a "does not exist error"
 	var fns [2]string
 	fns[0], fns[1] = getPaths(path)
 
 	// Delete both paths if they exist
 	for i := 0; i < 2; i++ {
-		err := deleteFile(fns[i], csprng)
+		err := deleteFile(fns[i], csprng, storage)
 		// Return errors from removal OR stat check
 		if err != nil {
 			return err
@@ -260,7 +260,7 @@ func deleteFiles(path string, csprng io.Reader) error {
 
 	// Open directory and flush it
 	dirname := filepath.Dir(path)
-	d, err := portableOS.Open(dirname)
+	d, err := storage.Open(dirname)
 	d.Sync()
 	d.Close()
 
@@ -268,13 +268,13 @@ func deleteFiles(path string, csprng io.Reader) error {
 }
 
 // write to the file and verify the data can be read
-func write(path string, data []byte) error {
+func write(path string, data []byte, storage portable.Storage) error {
 	if len(data) == 0 {
 		return errors.New(fmt.Sprintf(errInvalidSizeContents, 0))
 	}
 	// First, check if either file can be read. Then write to the other one
 	path1, path2 := getPaths(path)
-	newest, oldest, _ := getFileOrder(path1, path2)
+	newest, oldest, _ := getFileOrder(path1, path2, storage)
 	if newest != nil {
 		defer newest.Close()
 	}
@@ -282,7 +282,7 @@ func write(path string, data []byte) error {
 		defer oldest.Close()
 	}
 
-	filesToRead := []portableOS.File{newest, oldest}
+	filesToRead := []portable.File{newest, oldest}
 	modMonCntr := byte(2) // (2+1)%3 defaults to 0 when we can't read it
 	filePathThatWasRead := ""
 	for i := 0; i < len(filesToRead); i++ {
@@ -302,7 +302,7 @@ func write(path string, data []byte) error {
 	}
 
 	// Set the file to write, based on which file was read, if any
-	var fileToWrite portableOS.File
+	var fileToWrite portable.File
 	var filePathToWrite string
 	if filePathThatWasRead == "" || filePathThatWasRead == path2 {
 		filePathToWrite = path1
@@ -335,7 +335,7 @@ func write(path string, data []byte) error {
 	csumEnd := csumStart + blake2b.Size256
 	copy(contents[csumStart:csumEnd], checksum[:])
 
-	fileToWrite, err := createFile(filePathToWrite)
+	fileToWrite, err := createFile(filePathToWrite, storage)
 	// Error out if we failed to create
 	if err != nil {
 		return err
@@ -356,7 +356,7 @@ func write(path string, data []byte) error {
 	fileToWrite.Close()
 
 	// Check that what we wrote is equal to what we have
-	fileToWrite, err = portableOS.Open(filePathToWrite)
+	fileToWrite, err = storage.Open(filePathToWrite)
 	if err != nil {
 		return err
 	}
@@ -375,12 +375,12 @@ func write(path string, data []byte) error {
 
 // read returns the contents of the newest file for which it
 // can read all elements and validate the internal checksum
-func read(path string) ([]byte, error) {
+func read(path string, storage portable.Storage) ([]byte, error) {
 	// Open the newest first, note we only return this error if
 	// both returned file objects are bad (e.g., if neither file exists or
 	// the first byte of both files cannot be read)
 	path1, path2 := getPaths(path)
-	newest, oldest, err := getFileOrder(path1, path2)
+	newest, oldest, err := getFileOrder(path1, path2, storage)
 	if newest != nil {
 		defer newest.Close()
 	}
@@ -390,7 +390,7 @@ func read(path string) ([]byte, error) {
 
 	// Return the first file we can read the contents and validate a
 	// checksum, or an error
-	filesToRead := []portableOS.File{newest, oldest}
+	filesToRead := []portable.File{newest, oldest}
 	for i := 0; i < len(filesToRead); i++ {
 		if filesToRead[i] == nil {
 			continue

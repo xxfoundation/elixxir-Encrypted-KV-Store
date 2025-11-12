@@ -10,6 +10,8 @@ package ekv
 import (
 	"fmt"
 	"testing"
+
+	"gitlab.com/elixxir/ekv/portable"
 )
 
 // TestModMonCntr tests all of the expected states for the Modulo Monotonic
@@ -48,7 +50,7 @@ func TestModMonCntr(t *testing.T) {
 func TestZeroWrite(t *testing.T) {
 	key := "test"
 	data := []byte{}
-	err := write(key, data)
+	err := write(key, data, portable.UsePosix())
 	if err == nil {
 		t.Errorf("Expected error on 0 write")
 	}

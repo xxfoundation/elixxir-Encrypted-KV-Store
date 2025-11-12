@@ -20,13 +20,13 @@ func TestMemstore_Smoke(t *testing.T) {
 	}
 	err := f.Set("TestMe123", i)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	s := &MarshalableString{}
 	err = f.Get("TestMe123", s)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 	if s.S != "Hi" {
 		t.Errorf("Did not get what we wrote: %s != %s", s.S, "Hi")
@@ -34,12 +34,12 @@ func TestMemstore_Smoke(t *testing.T) {
 	// Now test set/get Interface
 	err = f.SetInterface("Test456", i)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 	s = &MarshalableString{}
 	err = f.GetInterface("Test456", s)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 	if s.S != "Hi" {
 		t.Errorf("Did not get what we wrote: %s != %s", s.S, "Hi")
@@ -55,7 +55,7 @@ func TestMemstore_Broken(t *testing.T) {
 	}
 	err := f.Set("TestMe123", i)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	s := &BrokenMarshalable{}
@@ -78,12 +78,12 @@ func TestMemstore_Multiset(t *testing.T) {
 		}
 		err := f.Set("TestMe123", i)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 		s := &MarshalableString{}
 		err = f.Get("TestMe123", s)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 		if s.S != expStr {
 			t.Errorf("Did not get what we wrote: %s != %s", s.S,
@@ -92,12 +92,12 @@ func TestMemstore_Multiset(t *testing.T) {
 		// Now test set/get Interface
 		err = f.SetInterface("Test456", i)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 		s = &MarshalableString{}
 		err = f.GetInterface("Test456", s)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 		if s.S != expStr {
 			t.Errorf("Did not get what we wrote: %s != %s", s.S,

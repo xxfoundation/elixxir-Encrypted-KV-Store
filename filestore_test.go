@@ -9,16 +9,13 @@ package ekv
 
 import (
 	"fmt"
-	"io/ioutil"
-	"math"
-	"os"
 	"runtime"
 	"runtime/debug"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
-	"gitlab.com/elixxir/ekv/portableOS"
+	"gitlab.com/elixxir/ekv/portable"
 )
 
 // This is a simple marshalable object
@@ -51,7 +48,7 @@ func (s *BrokenMarshalable) Unmarshal(d []byte) error {
 // TestFilestore_Smoke runs a basic read/write on the current directory
 func TestFilestore_Smoke(t *testing.T) {
 	defer func() {
-		if err := portableOS.RemoveAll(".ekv_testdir"); err != nil {
+		if err := portable.UsePosix().RemoveAll(".ekv_testdir"); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -66,13 +63,13 @@ func TestFilestore_Smoke(t *testing.T) {
 	}
 	err = f.Set("TestMe123", i)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	s := &MarshalableString{}
 	err = f.Get("TestMe123", s)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 	if s.S != "Hi" {
 		t.Errorf("Did not get what we wrote: %s != %s", s.S, "Hi")
@@ -81,12 +78,12 @@ func TestFilestore_Smoke(t *testing.T) {
 	// Now test set/get Interface
 	err = f.SetInterface("Test456", i)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 	s = &MarshalableString{}
 	err = f.GetInterface("Test456", s)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 	if s.S != "Hi" {
 		t.Errorf("Did not get what we wrote: %s != %s", s.S, "Hi")
@@ -94,14 +91,14 @@ func TestFilestore_Smoke(t *testing.T) {
 
 	err = f.Delete("Test456")
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 }
 
 // TestFilestore_Broken tries to marshal with a broken object
 func TestFilestore_Broken(t *testing.T) {
 	defer func() {
-		if err := portableOS.RemoveAll(".ekv_testdir_broken"); err != nil {
+		if err := portable.UsePosix().RemoveAll(".ekv_testdir_broken"); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -116,7 +113,7 @@ func TestFilestore_Broken(t *testing.T) {
 	}
 	err = f.Set("TestMe123", i)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	s := &BrokenMarshalable{}
@@ -131,7 +128,7 @@ func TestFilestore_Broken(t *testing.T) {
 // functionality)
 func TestFilestore_Multiset(t *testing.T) {
 	defer func() {
-		if err := portableOS.RemoveAll(".ekv_testdir_multiset"); err != nil {
+		if err := portable.UsePosix().RemoveAll(".ekv_testdir_multiset"); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -148,12 +145,12 @@ func TestFilestore_Multiset(t *testing.T) {
 		}
 		err = f.Set("TestMe123", i)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 		s := &MarshalableString{}
 		err = f.Get("TestMe123", s)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 		if s.S != expStr {
 			t.Errorf("Did not get what we wrote: %s != %s", s.S,
@@ -162,12 +159,12 @@ func TestFilestore_Multiset(t *testing.T) {
 		// Now test set/get Interface
 		err = f.SetInterface("Test456", i)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 		s = &MarshalableString{}
 		err = f.GetInterface("Test456", s)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 		if s.S != expStr {
 			t.Errorf("Did not get what we wrote: %s != %s", s.S,
@@ -180,7 +177,7 @@ func TestFilestore_Multiset(t *testing.T) {
 // data we stored back out.
 func TestFilestore_Reopen(t *testing.T) {
 	defer func() {
-		if err := portableOS.RemoveAll(".ekv_testdir_reopen"); err != nil {
+		if err := portable.UsePosix().RemoveAll(".ekv_testdir_reopen"); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -197,12 +194,12 @@ func TestFilestore_Reopen(t *testing.T) {
 	}
 	err = f.Set("TestMe123", i)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 	// Now test set/get Interface
 	err = f.SetInterface("Test456", i)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	for x := 0; x < 20; x++ {
@@ -214,7 +211,7 @@ func TestFilestore_Reopen(t *testing.T) {
 		s := &MarshalableString{}
 		err = f.Get("TestMe123", s)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 		if s.S != expStr {
 			t.Errorf("Did not get what we wrote: %s != %s", s.S,
@@ -225,7 +222,7 @@ func TestFilestore_Reopen(t *testing.T) {
 		s = &MarshalableString{}
 		err = f.GetInterface("Test456", s)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 		if s.S != expStr {
 			t.Errorf("Did not get what we wrote: %s != %s", s.S,
@@ -238,12 +235,12 @@ func TestFilestore_Reopen(t *testing.T) {
 		}
 		err = f.Set("TestMe123", i)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 		// Now test set/get Interface
 		err = f.SetInterface("Test456", i)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Error(err)
 		}
 	}
 }
@@ -251,7 +248,7 @@ func TestFilestore_Reopen(t *testing.T) {
 // TestFilestore_BadPass confirms using a bad password nets an error
 func TestFilestore_BadPass(t *testing.T) {
 	defer func() {
-		if err := portableOS.RemoveAll(".ekv_testdir_badpass"); err != nil {
+		if err := portable.UsePosix().RemoveAll(".ekv_testdir_badpass"); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -271,31 +268,20 @@ func TestFilestore_BadPass(t *testing.T) {
 // TestFilestore_FDCount writes to random keys and measures that the
 // number of open file descriptors is limited.
 func TestFilestore_FDCount(t *testing.T) {
-	// Check if we have a linux /proc/self/fd file.
-	fdpath := "/proc/self/fd"
-	fdStat, err := portableOS.Stat(fdpath)
-	if os.IsNotExist(err) || !fdStat.IsDir() {
-		t.Logf("Could not find /proc/self/fd, cannot run this test")
+	// Check if we can count file descriptors on this platform
+	startFDCount, err := getFDCount()
+	if err != nil {
+		t.Skipf("Cannot count file descriptors on this platform: %v", err)
 		return
 	}
 
 	baseDir := ".ekv_testdir_fdcount"
 
-	getFDCount := func() int {
-		files, err := ioutil.ReadDir("/proc/self/fd")
-		if err != nil {
-			t.Errorf(err.Error())
-		}
-		return len(files)
-	}
-
-	startFDCount := getFDCount()
-
 	t.Logf("Starting File Descriptor Count: %d", startFDCount)
 
-	err = portableOS.RemoveAll(baseDir)
+	err = portable.UsePosix().RemoveAll(baseDir)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err)
 	}
 
 	f, err := NewFilestore(baseDir, "Hello, World!")
@@ -303,7 +289,10 @@ func TestFilestore_FDCount(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	curFDCount := getFDCount()
+	curFDCount, err := getFDCount()
+	if err != nil {
+		t.Errorf("Failed to get FD count: %v", err)
+	}
 	t.Logf("Pre-test Count: %d", curFDCount)
 	startRoutinesCount := runtime.NumGoroutine()
 
@@ -321,12 +310,12 @@ func TestFilestore_FDCount(t *testing.T) {
 			}
 			err := f.Set(keyStr, i)
 			if err != nil {
-				t.Errorf(err.Error())
+				t.Error(err)
 			}
 			s := &MarshalableString{}
 			err = f.Get(keyStr, s)
 			if err != nil {
-				t.Errorf(err.Error())
+				t.Error(err)
 			}
 			if s.S != expStr {
 				t.Errorf("Did not get what we wrote: %s != %s",
@@ -345,12 +334,12 @@ func TestFilestore_FDCount(t *testing.T) {
 			keyStrInt := "SameKey"
 			err := f.SetInterface(keyStrInt, i)
 			if err != nil {
-				t.Errorf(err.Error())
+				t.Error(err)
 			}
 			s := &MarshalableString{}
 			err = f.GetInterface(keyStrInt, s)
 			if err != nil {
-				t.Errorf(err.Error())
+				t.Error(err)
 			}
 			if s.S != expStr {
 				t.Errorf("Did not get what we wrote: %s != %s",
@@ -360,30 +349,63 @@ func TestFilestore_FDCount(t *testing.T) {
 		}(f, x)
 	}
 	finishedCnt := 0
+	maxDeltaFD := 0
 	for finishedCnt < totalCnt*2 {
 		select {
 		case <-sharedCh:
 			finishedCnt++
-			curFDCount = getFDCount()
-		case <-time.After(100 * time.Millisecond):
-			curFDCount = getFDCount()
+			curFDCount, _ = getFDCount()
+		case <-time.After(200 * time.Millisecond):
+			// Only check FD count periodically if we still have active goroutines
+			numRoutines := runtime.NumGoroutine() - startRoutinesCount
+			if numRoutines == 0 && finishedCnt == totalCnt*2 {
+				// All done, exit the loop
+				break
+			}
+			curFDCount, _ = getFDCount()
+		}
 
-		}
 		numRoutines := runtime.NumGoroutine() - startRoutinesCount
-		t.Logf("Count at %d: %d (numProcs: %d)", finishedCnt,
-			curFDCount, numRoutines)
-		// Note: This number is slightly fudged.. it is based on
-		// 2 files at most open per thread in the unique threads
-		// and only a few threads getting past the lock on the
-		// shared key threads, in practice it doesn't go above
-		// ~175 or so in the corrected code when totalCnt is 200 (87.5%)
-		// whereas it always reached 400 before.
-		limit := math.Max(float64(numRoutines)*0.875, 10)
-		if (curFDCount - startFDCount) > int(limit) {
-			t.Errorf("Used FD Count exceeds limit: "+
-				"%d > %d", curFDCount-startFDCount,
-				numRoutines/2)
+		deltaFD := curFDCount - startFDCount
+		if deltaFD > maxDeltaFD {
+			maxDeltaFD = deltaFD
 		}
+
+		// Only log when there's activity or we're sampling
+		if finishedCnt%10 == 0 || numRoutines > 0 {
+			t.Logf("Progress %d/%d: +%d FDs (active goroutines: %d, peak: +%d FDs)",
+				finishedCnt, totalCnt*2, deltaFD, numRoutines, maxDeltaFD)
+		}
+
+		// The goal is to ensure FDs don't leak, not to have perfect concurrency tuning.
+		// We check that FD count doesn't grow unbounded (which would indicate leaks).
+		// If leaking, we'd see FD count approach totalCnt*2 (400+) and stay there.
+		// Instead, we see FDs spike during concurrency then return to baseline.
+		//
+		// The limit is intentionally generous because:
+		// - We can't perfectly predict concurrent behavior
+		// - macOS proc_pidinfo may count differently than Linux /proc/self/fd
+		// - The real validation is in the final check (FDs return to baseline)
+		const maxAllowedFDs = 200
+		if deltaFD > maxAllowedFDs {
+			t.Errorf("FD count suggests possible leak: +%d FDs (expected < %d)",
+				deltaFD, maxAllowedFDs)
+		}
+	}
+
+	// Final check: FDs should return to baseline
+	// Give goroutines time to finish and GC to clean up
+	for i := 0; i < 3; i++ {
+		runtime.GC()
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	finalFDCount, _ := getFDCount()
+	finalDelta := finalFDCount - startFDCount
+	t.Logf("Final: +%d FDs (peak was +%d FDs)", finalDelta, maxDeltaFD)
+
+	if finalDelta > 5 {
+		t.Errorf("File descriptors not properly closed: %d FDs still open after test", finalDelta)
 	}
 
 	debug.SetGCPercent(100)

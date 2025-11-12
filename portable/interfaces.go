@@ -5,8 +5,9 @@
 // LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
-// Package portableOS contains global OS functions that can be overwritten to be
-// used with other filesystems not supported by the [os] package, such as wasm.
+// Package portable provides abstraction for filesystem operations,
+// enabling support for different storage backends including POSIX filesystems
+// and key-value stores.
 //
 // Note to those implementing these functions: all function errors of certain
 // types must match the following errors
@@ -15,7 +16,7 @@
 //	"file already exists"
 //	"file does not exist"
 //	"file already closed"
-package portableOS
+package portable
 
 // File represents an open file descriptor. It contains a subset of the methods
 // on os.File that are used in this repository.
@@ -83,3 +84,37 @@ type FileInfo interface {
 // only required bit is os.ModeDir for directories. See os.FileMode for all
 // possible values.
 type FileMode uint32
+
+// Storage is the interface that abstracts filesystem operations.
+// This allows ekv to work with different storage backends including
+// POSIX filesystems and key-value stores.
+type Storage interface {
+	// Open opens the named file for reading. If successful, methods on the
+	// returned file can be used for reading; the associated file descriptor
+	// has mode os.O_RDONLY.
+	Open(name string) (File, error)
+
+	// Create creates or truncates the named file. If the file already exists,
+	// it is truncated. If the file does not exist, it is created with mode
+	// 0666 (before umask). If successful, methods on the returned File can be
+	// used for I/O; the associated file descriptor has mode os.O_RDWR.
+	Create(name string) (File, error)
+
+	// Remove removes the named file or directory.
+	Remove(name string) error
+
+	// RemoveAll removes path and any children it contains.
+	// It removes everything it can but returns the first error
+	// it encounters. If the path does not exist, RemoveAll
+	// returns nil (no error).
+	RemoveAll(path string) error
+
+	// MkdirAll creates a directory named path, along with any necessary parents,
+	// and returns nil, or else returns an error. The permission bits perm (before
+	// umask) are used for all directories that MkdirAll creates. If path is
+	// already a directory, MkdirAll does nothing and returns nil.
+	MkdirAll(path string, perm FileMode) error
+
+	// Stat returns a FileInfo describing the named file.
+	Stat(name string) (FileInfo, error)
+}

@@ -9,16 +9,26 @@
 //go:build !js || !wasm
 // +build !js !wasm
 
-package portableOS
+package portable
 
 import (
 	"os"
 )
 
+// posix is a Storage implementation that uses standard POSIX filesystem
+// operations via the os package.
+type posix struct{}
+
+// UsePosix returns a Storage implementation that uses standard POSIX
+// filesystem operations.
+func UsePosix() Storage {
+	return &posix{}
+}
+
 // Open opens the named file for reading. If successful, methods on the returned
 // file can be used for reading; the associated file descriptor has mode
 // os.O_RDONLY.
-var Open = func(name string) (File, error) {
+func (p *posix) Open(name string) (File, error) {
 	return os.Open(name)
 }
 
@@ -26,29 +36,32 @@ var Open = func(name string) (File, error) {
 // truncated. If the file does not exist, it is created with mode 0666 (before
 // umask). If successful, methods on the returned File can be used for I/O; the
 // associated file descriptor has mode os.O_RDWR.
-var Create = func(name string) (File, error) {
+func (p *posix) Create(name string) (File, error) {
 	return os.Create(name)
 }
 
 // Remove removes the named file or directory.
-var Remove = os.Remove
+func (p *posix) Remove(name string) error {
+	return os.Remove(name)
+}
 
 // RemoveAll removes path and any children it contains.
 // It removes everything it can but returns the first error
 // it encounters. If the path does not exist, RemoveAll
 // returns nil (no error).
-// If there is an error, it will be of type *PathError.
-var RemoveAll = os.RemoveAll
+func (p *posix) RemoveAll(path string) error {
+	return os.RemoveAll(path)
+}
 
 // MkdirAll creates a directory named path, along with any necessary parents,
 // and returns nil, or else returns an error. The permission bits perm (before
 // umask) are used for all directories that MkdirAll creates. If path is already
 // a directory, MkdirAll does nothing and returns nil.
-var MkdirAll = func(path string, perm FileMode) error {
+func (p *posix) MkdirAll(path string, perm FileMode) error {
 	return os.MkdirAll(path, os.FileMode(perm))
 }
 
 // Stat returns a FileInfo describing the named file.
-var Stat = func(name string) (FileInfo, error) {
+func (p *posix) Stat(name string) (FileInfo, error) {
 	return os.Stat(name)
 }

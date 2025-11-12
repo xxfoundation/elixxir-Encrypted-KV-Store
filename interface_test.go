@@ -8,7 +8,7 @@
 package ekv
 
 import (
-	"gitlab.com/elixxir/ekv/portableOS"
+	"gitlab.com/elixxir/ekv/portable"
 	"testing"
 )
 
@@ -38,7 +38,7 @@ func TestExists_Filestore(t *testing.T) {
 	dir := ".ekv_testdir"
 	// Delete the test file at the end
 	defer func() {
-		err := portableOS.RemoveAll(dir)
+		err := portable.UsePosix().RemoveAll(dir)
 		if err != nil {
 			t.Fatalf("Error deleting test file %#v:\n%v", dir, err)
 		}
