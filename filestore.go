@@ -10,7 +10,7 @@ package ekv
 import (
 	"bytes"
 	"crypto/rand"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"io"
 	"os"
 	"sync"

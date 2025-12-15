@@ -395,9 +395,10 @@ func TestFilestore_FDCount(t *testing.T) {
 
 	// Final check: FDs should return to baseline
 	// Give goroutines time to finish and GC to clean up
-	for i := 0; i < 3; i++ {
+	// sync.Pool (used by goccy/go-json) releases items after 2 GC cycles
+	for i := 0; i < 5; i++ {
 		runtime.GC()
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	finalFDCount, _ := getFDCount()

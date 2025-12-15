@@ -12,6 +12,7 @@ require (
 )
 
 require (
+	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/stretchr/testify v1.8.2 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 )

@@ -48,6 +48,18 @@ func UseKeyValue(storage GenericKeyValue) Storage {
 func (k *kv) Open(name string) (File, error) {
 	keyValue, err := k.storage.Get(name)
 	if err != nil {
+		// Check if this looks like a directory path (no file extension or ends with /)
+		// For KV stores, directories may not exist as keys but should still be openable
+		isDir := strings.HasSuffix(name, "/") || !strings.Contains(name, ".")
+		if isDir {
+			// Create the directory key if it doesn't exist
+			err := k.storage.Set(name, []byte(""))
+			if err != nil {
+				return nil, err
+			}
+			return openKV(name, "", k.storage), nil
+		}
+
 		// Convert to os.ErrNotExist if appropriate
 		if strings.Contains(err.Error(), "not exist") ||
 			strings.Contains(err.Error(), "not found") {

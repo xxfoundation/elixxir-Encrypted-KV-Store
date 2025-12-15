@@ -25,6 +25,8 @@ type File interface {
 	// On files that support SetDeadline, any pending I/O operations will
 	// be canceled and return immediately with an ErrClosed error.
 	// Close will return an error if it has already been called.
+	//
+	// Returns an error containing "file already closed" if already closed.
 	Close() error
 
 	// Name returns the name of the file as presented to Open.
@@ -33,12 +35,18 @@ type File interface {
 	// Read reads up to len(b) bytes from the File and stores them in b.
 	// It returns the number of bytes read and any error encountered.
 	// At end of file, Read returns 0, io.EOF.
+	//
+	// Returns an error containing "file already closed" if the file is closed.
+	// Returns io.EOF when no more data is available.
 	Read(b []byte) (n int, err error)
 
 	// ReadAt reads len(b) bytes from the File starting at byte offset off.
 	// It returns the number of bytes read and the error, if any.
 	// ReadAt always returns a non-nil error when n < len(b).
 	// At end of file, that error is io.EOF.
+	//
+	// Returns an error containing "file already closed" if the file is closed.
+	// Returns io.EOF when reading beyond the end of the file.
 	ReadAt(b []byte, off int64) (n int, err error)
 
 	// Seek sets the offset for the next Read or Write on file to offset,
@@ -50,16 +58,22 @@ type File interface {
 	// If f is a directory, the behavior of Seek varies by operating system; you
 	// can seek to the beginning of the directory on Unix-like operating
 	// systems, but not on Windows.
+	//
+	// Returns an error containing "file already closed" if the file is closed.
 	Seek(offset int64, whence int) (ret int64, err error)
 
 	// Sync commits the current contents of the file to stable storage.
 	// Typically, this means flushing the file system's in-memory copy
 	// of recently written data to disk.
+	//
+	// Returns an error containing "file already closed" if the file is closed.
 	Sync() error
 
 	// Write writes len(b) bytes from b to the File.
 	// It returns the number of bytes written and an error, if any.
 	// Write returns a non-nil error when n != len(b).
+	//
+	// Returns an error containing "file already closed" if the file is closed.
 	Write(b []byte) (n int, err error)
 }
 
@@ -92,29 +106,46 @@ type Storage interface {
 	// Open opens the named file for reading. If successful, methods on the
 	// returned file can be used for reading; the associated file descriptor
 	// has mode os.O_RDONLY.
+	//
+	// Returns an error containing "file does not exist" if the file does not exist.
+	// Returns an error containing "permission denied" if the caller lacks permission.
 	Open(name string) (File, error)
 
 	// Create creates or truncates the named file. If the file already exists,
 	// it is truncated. If the file does not exist, it is created with mode
 	// 0666 (before umask). If successful, methods on the returned File can be
 	// used for I/O; the associated file descriptor has mode os.O_RDWR.
+	//
+	// Returns an error containing "permission denied" if the caller lacks permission.
 	Create(name string) (File, error)
 
 	// Remove removes the named file or directory.
+	//
+	// Returns an error containing "file does not exist" if the file does not exist.
+	// Returns an error containing "permission denied" if the caller lacks permission.
 	Remove(name string) error
 
 	// RemoveAll removes path and any children it contains.
 	// It removes everything it can but returns the first error
 	// it encounters. If the path does not exist, RemoveAll
 	// returns nil (no error).
+	//
+	// Returns an error containing "permission denied" if the caller lacks permission.
 	RemoveAll(path string) error
 
 	// MkdirAll creates a directory named path, along with any necessary parents,
 	// and returns nil, or else returns an error. The permission bits perm (before
 	// umask) are used for all directories that MkdirAll creates. If path is
 	// already a directory, MkdirAll does nothing and returns nil.
+	//
+	// Returns an error containing "file already exists" if a file (not directory)
+	// exists at the path.
+	// Returns an error containing "permission denied" if the caller lacks permission.
 	MkdirAll(path string, perm FileMode) error
 
 	// Stat returns a FileInfo describing the named file.
+	//
+	// Returns an error containing "file does not exist" if the file does not exist.
+	// Returns an error containing "permission denied" if the caller lacks permission.
 	Stat(name string) (FileInfo, error)
 }

@@ -8,7 +8,7 @@
 package ekv
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	jww "github.com/spf13/jwalterweatherman"
 	"sync"
 
